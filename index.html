@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>遠征戦闘シミュレーター v4.27.0</title>
+<!-- v4.27: 「もっと美しい日本語フォントにしてほしい」というご要望を受け、Google Fontsから
+     Zen Kaku Gothic New(近未来的でクリーンな印象のゴシック体)をCDN経由で読み込むことにした。
+     これにより、これまで維持してきた「単体HTML・外部依存なし(完全オフライン動作)」という設計方針から
+     初めて外れる(初回表示時にインターネット接続が必要)。この点はたちばなさんに選択肢を提示のうえ、
+     明示的にCDN読み込み案を選んでいただいた結果である。読み込みに失敗した場合は、従来通りOS標準の
+     日本語フォント(Hiragino角ゴシック/游ゴシックなど)に自動的にフォールバックする。 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* v4.20: 「デザインがダサい」というご指摘を受け、v4.19(ライト基調の紫グラデーション)から
+       方向性を大きく変更。たちばなさんの選択(ダークモード・近未来系)に基づき、Whiteout Survivalの
+       寒冷サバイバル世界観に合う「氷/シアンの発光アクセント×濃紺〜黒の背景」のダークテーマに全面刷新した。
+       単体HTML・外部依存なしの制約は維持し、Webフォント(CDN)・画像は一切使わずCSSのみで実現している。 */
+    color-scheme: dark; /* ブラウザ既定のフォームコントロール(select・チェックボックス・スクロールバー等)もダーク基調に寄せる */
+    --bg: #070b14; --bg-accent: #0c1526;
+    --card: #10192c; --card-alt: #16223a;
+    --border: #22304a; --border-soft: #1a2438;
+    --input-bg: #0b1220; --input-border: #263756;
+    --text: #e7ecf5; --muted: #93a0b8;
+    --accent: #22d3ee; --accent-dark: #0891b2; --accent-bright: #7ee8fa; --accent-soft: rgba(34,211,238,.12);
+    --accent2: #a78bfa;
+    --shield: #38bdf8; --spear: #fbbf24; --archer: #c084fc;
+    --ok: #34d399; --danger: #f87171; --warn: #fbbf24;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.5), 0 1px 1px rgba(0,0,0,.35);
+    --shadow-md: 0 10px 26px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.35);
+    --shadow-lg: 0 24px 60px rgba(0,0,0,.6), 0 6px 18px rgba(0,0,0,.4);
+    --glow: 0 0 22px rgba(34,211,238,.25);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  body { margin:0; padding:0 0 60px 0; background-color:var(--bg); color:var(--text);
+    background-image:
+      radial-gradient(1100px 520px at 8% -8%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(900px 420px at 100% 6%, rgba(167,139,250,.08), transparent 60%),
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size:auto,auto,48px 48px,48px 48px;
+    background-attachment:fixed;
+    font-family:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Noto Sans JP",Meiryo,sans-serif;
+    font-size:14px; line-height:1.65; letter-spacing:.01em; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--accent-dark); }
+  header { background:linear-gradient(135deg,#03050a 0%,#071022 42%,#0a1d3d 74%,#0e2a52 100%);
+    color:#fff; padding:30px 20px; position:relative; overflow:hidden;
+    border-bottom:1px solid rgba(34,211,238,.22);
+    box-shadow:0 1px 0 rgba(34,211,238,.12), 0 30px 60px rgba(0,0,0,.55); }
+  header::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(700px 260px at 85% -35%, rgba(34,211,238,.20), transparent 60%),
+      radial-gradient(520px 220px at 6% 130%, rgba(167,139,250,.14), transparent 60%);
+  }
+  header .wrap { position:relative; }
+  header h1 .h1-version { font-size:0.5em; font-weight:600; color:var(--muted); letter-spacing:.01em; margin-left:6px; vertical-align:middle; }
+  header h1 { margin:0 0 6px 0; font-size:23px; font-weight:800; letter-spacing:.02em;
+    text-shadow:0 0 26px rgba(34,211,238,.35); }
+  header p { margin:0; font-size:13px; color:#aeb9d1; }
+  .wrap { max-width:1200px; margin:0 auto; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; margin-bottom:20px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), var(--shadow-sm); transition:box-shadow .18s ease, border-color .18s ease; }
+  .card:hover { box-shadow:inset 0 1px 0 rgba(255,255,255,.04), var(--shadow-md), 0 0 0 1px rgba(34,211,238,.10); border-color:#2a3c5c; }
+  .card h2 { font-size:16.5px; margin:0 0 4px 0; font-weight:800; color:var(--text); letter-spacing:.01em;
+    display:flex; align-items:center; gap:8px; }
+  .card h2::before {
+    content:""; display:inline-block; width:4px; height:18px; border-radius:2px; flex-shrink:0;
+    background:linear-gradient(180deg,var(--accent),var(--accent2)); box-shadow:0 0 10px rgba(34,211,238,.55);
+  }
+  .card .sub { color:var(--muted); font-size:12.5px; margin:0 0 14px 0; }
+  details.note { background:var(--card-alt); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13px; }
+  details.note summary { cursor:pointer; font-weight:600; color:var(--warn); }
+  details.note ul { margin:8px 0 0 0; padding-left:20px; } details.note li { margin-bottom:6px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; color:var(--text); }
+  /* v4.19: 見出し行(th)と内容行(td)の配置が一致していなかった(thはブラウザ既定で中央揃え+太字、
+     tdは既定で左揃えのため、列幅が揃っていても見た目がズレて見えていた)のが「表が見にくい」
+     「見出しと内容がずれる」の直接原因。全テーブル共通でth/tdを中央揃えに統一し、
+     スキル名など長いテキストの列だけ個別に(インラインstyleや以下の専用ルールで)左揃えに戻す。 */
+  table th, table td { text-align:center; padding:7px 10px; }
+  table thead th { font-weight:700; }
+  .stat-table th, .stat-table td { border:1px solid var(--border); padding:7px 10px; text-align:center; }
+  .stat-table th { background:var(--accent-soft); color:var(--accent-bright); }
+  .stat-table tbody tr:nth-child(even) { background:rgba(255,255,255,.025); }
+  .type-shield { color:var(--shield); font-weight:700; }
+  .type-spear { color:var(--spear); font-weight:700; }
+  .type-archer { color:var(--archer); font-weight:700; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr;} .grid3{grid-template-columns:1fr;} }
+  fieldset { border:1px solid var(--border); border-radius:8px; margin:0 0 14px 0; padding:10px 14px; }
+  legend { font-size:13px; font-weight:700; padding:0 6px; color:var(--accent-bright); }
+  .field { margin-bottom:8px; }
+  .field label { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; font-weight:600; }
+  .field input, .field select, input[type=text], input[type=number], select {
+    width:100%; padding:7px 8px; border:1px solid var(--input-border); border-radius:7px;
+    background:var(--input-bg); color:var(--text); font-size:13.5px; transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .field input:focus, .field select:focus, input:focus, select:focus {
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(34,211,238,.2);
+  }
+  input[type=checkbox] { accent-color:var(--accent); width:16px; height:16px; cursor:pointer; }
+  .inline-fields { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .hero-box { border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--card-alt); transition:border-color .15s ease; }
+  .hero-box:hover { border-color:rgba(34,211,238,.4); }
+  .hero-effect { font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:2px solid var(--border); }
+  .tab-btn { padding:9px 20px; border-radius:8px 8px 0 0; border:1px solid transparent; border-bottom:none;
+    background:transparent; cursor:pointer; font-weight:700; color:var(--muted); transition:all .15s ease; margin-bottom:-2px; }
+  .tab-btn:hover { color:var(--accent-bright); background:var(--accent-soft); }
+  .tab-btn.active { background:var(--card); color:var(--accent-bright); border-color:var(--border); border-bottom:2px solid var(--card); }
+  .tab-panel { display:none; } .tab-panel.active { display:block; }
+  button { cursor:pointer; border:none; border-radius:8px; padding:9px 18px; font-size:13.5px; font-weight:700;
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease; }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#04141c;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25), var(--shadow-sm), 0 0 18px rgba(34,211,238,.3); }
+  .btn-primary:hover { box-shadow:inset 0 1px 0 rgba(255,255,255,.3), var(--shadow-md), 0 0 30px rgba(34,211,238,.5); transform:translateY(-1px); }
+  .btn-primary:active { transform:translateY(0); }
+  .btn-sub { background:var(--card-alt); color:var(--text); margin-left:8px; border:1px solid var(--border); }
+  .btn-sub:hover { background:#1c2a45; border-color:rgba(34,211,238,.4); transform:translateY(-1px); }
+  .btn-sub:active { transform:translateY(0); }
+  .action-row { margin:18px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .result-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; }
+  @media (max-width:900px){ .result-grid{grid-template-columns:minmax(0,1fr);} }
+  .result-card { border:1px solid var(--border); border-radius:10px; padding:16px 18px; background:var(--card-alt); min-width:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), var(--shadow-sm); }
+  .result-card h3 { margin:0 0 8px 0; font-size:15px; font-weight:800; color:var(--accent-bright); }
+  .badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:800; letter-spacing:.02em; border:1px solid transparent; }
+  .badge-win { background:rgba(52,211,153,.14); color:var(--ok); border-color:rgba(52,211,153,.35); }
+  .badge-lose { background:rgba(248,113,113,.14); color:var(--danger); border-color:rgba(248,113,113,.35); }
+  .badge-draw { background:rgba(251,191,36,.14); color:var(--warn); border-color:rgba(251,191,36,.35); }
+  .badge-undecided { background:rgba(147,160,184,.14); color:var(--muted); border-color:rgba(147,160,184,.3); }
+  .mini-table { font-size:13px; margin-top:8px; max-height:340px; overflow:auto; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow-sm); }
+  .mini-table table { width:auto; min-width:100%; border-collapse:collapse; }
+  .mini-table th, .mini-table td { white-space:nowrap; padding:6px 12px; border-bottom:1px solid var(--border-soft); text-align:center; }
+  .mini-table thead th { position:sticky; top:0; background:#132038; color:var(--accent-bright); z-index:1; box-shadow:0 1px 0 var(--border); }
+  .mini-table tbody tr:nth-child(even) { background:rgba(255,255,255,.02); }
+  .mini-table tbody tr:hover { background:var(--accent-soft); }
+  .mini-table td:last-child, .mini-table th:last-child { white-space:normal; min-width:120px; }
+  /* v4.12: スキル発動タイムライン表(1行=1スキル、1列=1ターン)専用のスタイル。
+     ターン列は数字/マークのみで狭くてよいのでpaddingを詰め、スキル名列(1列目)は
+     横スクロールしても見出しが分かるようsticky(左端固定)にする。 */
+  .timeline-table th, .timeline-table td { padding:4px 6px; font-size:12px; }
+  .timeline-table td:last-child, .timeline-table th:last-child { white-space:nowrap; min-width:0; }
+  .timeline-table th:first-child, .timeline-table td:first-child {
+    position:sticky; left:0; background:var(--card-alt); z-index:2; box-shadow:1px 0 0 var(--border); text-align:left;
+  }
+  .timeline-table thead th:first-child { z-index:3; background:#132038; }
+  .req-mult-box { margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px; border:1px solid rgba(34,211,238,.3); }
+  .hero-log { font-size:11px; color:var(--muted); margin-top:6px; }
+  .role-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:800; background:rgba(255,255,255,.06); color:var(--text); margin-left:8px; letter-spacing:.02em; border:1px solid var(--border); }
+  .slider-row { display:flex; align-items:center; gap:8px; }
+  .slider-row input[type=range] { flex:1; }
+  .slider-row .slider-val { min-width:20px; text-align:center; font-weight:700; color:var(--accent-bright); }
+  input[type=range] { -webkit-appearance:none; appearance:none; height:5px; border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); background-size:100% 100%; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px;
+    border-radius:50%; background:#e7ecf5; border:2.5px solid var(--accent); box-shadow:0 0 10px rgba(34,211,238,.6); cursor:pointer; }
+  input[type=range]::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#e7ecf5;
+    border:2.5px solid var(--accent); box-shadow:0 0 10px rgba(34,211,238,.6); cursor:pointer; }
+  /* v4.17: 常時表示していた説明文・注記を、クリックで開くinfoアイコン+モーダルに置き換えるためのスタイル。
+     見出しの隣に小さな「ⓘ」を置き、押すと画面中央にモーダルで説明を表示する(通常は非表示なので
+     画面が文章で埋まらない)。 */
+  .info-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:19px; height:19px; min-width:19px; flex-shrink:0; padding:0; line-height:1;
+    border-radius:50%; background:var(--accent-soft); color:var(--accent-bright);
+    font-size:12px; font-weight:800; font-style:normal; cursor:pointer; margin-left:6px;
+    vertical-align:middle; user-select:none; border:none; transition:all .15s ease; box-sizing:border-box;
+  }
+  .info-icon:hover { background:var(--accent); color:#04141c; box-shadow:0 0 14px rgba(34,211,238,.6); }
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(2,6,16,.72); z-index:1000;
+    align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:var(--card); border:1px solid var(--border); border-radius:14px; max-width:720px; width:100%; max-height:80vh;
+    overflow:auto; padding:22px 26px; box-shadow:var(--shadow-lg), 0 0 0 1px rgba(34,211,238,.12); position:relative;
+  }
+  .modal-box h3 { margin:0 0 12px 0; font-size:16.5px; font-weight:800; color:var(--accent-bright); padding-right:28px; }
+  .modal-box ul { margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text); }
+  .modal-box ul li { margin-bottom:8px; }
+  .modal-box p { font-size:13px; line-height:1.7; color:var(--text); margin:0 0 10px 0; }
+  .modal-close {
+    position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px;
+    line-height:1; color:var(--muted); cursor:pointer; padding:2px 6px; border-radius:6px; transition:all .15s ease;
+  }
+  .modal-close:hover { color:var(--text); background:rgba(255,255,255,.08); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>遠征戦闘シミュレーター<span class="h1-version">v4.27.0</span><button type="button" class="info-icon" data-info="premise" title="前提条件">i</button></h1>
+    <p>集結(攻撃)と駐屯(防衛)の戦闘を、陣形・ダメージ式・英雄構成をもとに試算します。</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- v4.17: 常時表示していた説明文・注記は、見出し隣のinfoアイコン(i)をクリックした時だけ
+       モーダルで表示する形に変更した。アイコンの中身(タイトル・本文)はapp.js側のINFO_CONTENTS
+       に定義している。 -->
+  <div id="info-modal-overlay" class="modal-overlay">
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="info-modal-close">&times;</button>
+      <h3 id="info-modal-title"></h3>
+      <div id="info-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>① 対戦シナリオ・全体設定<button type="button" class="info-icon" data-info="scaling-exponent" title="兵力数の寄与について">i</button></h2>
+    <div class="field" style="max-width:520px;margin-bottom:14px;">
+      <label>対戦シナリオ</label>
+      <select id="scenario">
+        <option value="self-attack">自軍が集結(攻撃)する / 敵は駐屯(防衛)</option>
+        <option value="self-defense">自軍が駐屯(防衛)する / 敵が集結(攻撃)してくる</option>
+      </select>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>兵種相性ボーナス(盾→槍→弓→盾、%)</label><input type="number" id="mech-counter" value="10"></div>
+      <div class="field"><label>シミュレーション最大ターン数(安全装置)</label><input type="number" id="max-turns" value="20000"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>② 敵軍設定<span class="role-badge" id="enemy-role-badge"></span></h2>
+    <p class="sub" id="enemy-role-desc"></p>
+    <div id="defender-panel"></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 自軍編成<span class="role-badge" id="self-role-badge"></span></h2>
+    <p class="sub" id="self-role-desc"></p>
+    <div class="field" style="max-width:640px;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer;">
+        <input type="checkbox" id="enable-pattern-b" style="width:auto;">
+        2つの編成を見比べる(ABテスト)
+      </label>
+    </div>
+    <!-- v4.18: 「パターンAという名称・タブが既定(1つだけ)のときは不要」とのご指摘に対応し、
+         比較(Bパターン)が無効な既定状態ではタブ自体を非表示にする(下のpanel-Aがそのまま表示される)。
+         内部的なA/Bという識別子(id・データ構造)は維持しつつ、画面上の「パターンA」「パターンB」という
+         表示名は、実際に2つを比較しているとき(Bパターン有効時)だけ使う。 -->
+    <div class="tabs" id="pattern-tabs" style="display:none;">
+      <div class="tab-btn active" data-tab="A">パターンA</div>
+      <div class="tab-btn" data-tab="B" id="tab-btn-B">パターンB</div>
+    </div>
+    <div class="tab-panel active" id="panel-A" data-side="A"></div>
+    <div class="tab-panel" id="panel-B" data-side="B"></div>
+  </div>
+
+  <div class="card">
+    <div class="action-row">
+      <button class="btn-primary" id="btn-run">シミュレーション実行</button>
+      <button class="btn-sub" id="btn-find-mult">必要兵力倍率を逆算</button>
+      <button class="btn-sub" id="btn-export">設定をJSON保存</button>
+      <button class="btn-sub" id="btn-import">設定をJSON読込</button>
+      <input type="file" id="file-import" accept=".json" style="display:none;">
+    </div>
+    <div class="action-row" style="margin-top:8px;">
+      <button class="btn-sub" id="btn-monte-carlo">実際の乱数で複数回試行(ばらつきを確認)</button>
+      <button type="button" class="info-icon" data-info="monte-carlo" title="この機能について">i</button>
+      <div class="field" style="display:inline-block;max-width:160px;margin:0 0 0 8px;">
+        <input type="number" id="monte-carlo-trials" value="200" min="10" max="2000" step="10">
+      </div>
+      <span class="sub" style="margin-left:4px;">回試行</span>
+    </div>
+    <div id="monte-carlo-result" style="display:none;margin-top:8px;"></div>
+  </div>
+
+  <div class="card" id="result-card" style="display:none;">
+    <h2>④ シミュレーション結果</h2>
+    <div class="result-grid" id="result-grid"></div>
+  </div>
+
+</div>
+
+<script>
+// 英雄データ: 各英雄の才能スキル・専用装備・遠征スキルを転記したものです。
+// ナタリア/ジャスミン/ジンマンの数値はスクリーンショット表示値と一致確認済みですが、
+// それ以外の英雄は個別の裏取りができていないため、未検証データとして扱ってください(ツール内に注記あり)。
+// buffs: {scope: all/shield/spear/archer, stat: dealt(与ダメ)/taken(被ダメ)/hp, pct: 小数(0.25=25%)}
+//   常時発動する効果、および発動条件付きだが期待値換算で常時の一定倍率として近似したもの(確率発動型など)。
+// periodicBuffs: {scope, stat, pct, cycleTurns, activeTurns} = 確率ではなく確定的な周期で発動するスキル
+//   (例: n回攻撃ごとにmターンだけ持続)。cycleTurnsターンの周期のうち、最初のactiveTurnsターンだけpctが
+//   実際に適用される(v4.5で追加。ターンごとの発動有無をそのまま結果に反映するための仕組み)。
+// procBuffs: {scope, stat, chance(0〜1), magnitude(発動時の効果量、小数), skillName} = 確率発動スキル(v4.11で追加)。
+//   例: ノラ「Sneak Strike」= 槍兵の攻撃時20%の確率で敵全体に追加ダメージ。実際の勝敗・損耗数の計算では
+//   他の確率発動スキルと同様に期待値(chance×magnitude)を常時加算するが、「ターン毎の内訳」表示側では
+//   そのchance%に従った疑似乱数(シード固定・再現可能、乱数が戦闘結果自体には影響しない)で、そのターンに
+//   「発動した」ものとして表示するかどうかを都度判定する。以前はbuffs側で期待値のみを一律常時加算する形に
+//   していたため、「発動していたりしていなかったりする」という実際の見え方が表現できていなかった
+//   (v4.10までの既存の確率発動系buffs、および取りこぼしていたノラ「Sneak Strike」をこの形へ移行・追加)。
+// equip.statPct: 専用装備によるその兵科自身の殺傷力/HP上昇。専用装備レベル(0〜5)に比例して計算に反映(v4.4〜)。
+// equip.skill: 専用装備の遠征スキル。mode: attack(集結/攻撃時)|defense(駐屯/防衛時)に発動、満レベルで+15%相当
+// skillName(任意、v4.8で追加、v4.10で51体中45体分を追加調査): buffs/periodicBuffs/equip.skillの各エントリに、
+//   wostools.net/wiki/heroes/等で実際のスキル名(固有名詞、英語)が確認できた場合にのみ設定する
+//   (未確認の場合は省略。値を捏造しない)。「ターン毎の内訳」表の「発動したスキル」欄で、英雄名だけでなく
+//   実際にどのスキル(才能スキル/専用装備遠征スキル/周期発動スキルのいずれか、および分かる場合はその固有名)
+//   が発動しているかを表示するために使う。
+//   v4.10(2026/08/15)で、hector/norah以外の全49体についてwostools.net/wiki/heroes/を調査し、既存のpct値と
+//   数値が一致する実際のスキル名をskillNameとして追記した。ただし以下のケースはskillNameを空欄のままにして
+//   いる(各英雄のコメントに詳細を記載): (1) 同値の複数スキルが候補になり1つに絞れない、(2) 数値が一致する
+//   スキルが探索(Exploration)専用スキルに分類されており、才能スキルとして計算に含めるのは前提条件の除外
+//   方針と矛盾するため保留、(3) そもそも一致するスキルが見つからなかった(pct値自体の裏取りが必要な可能性)。
+//   S16・S17の6体(シガー・ウルタール・アシュリン・エイダン・ベルサ・エリノ)は、wostools.net/wiki/heroes/が
+//   2026/08/15時点でS15までしかカバーしておらずskillNameを一切設定できていない。
+// skillNameJa(任意、v4.12で追加): たちばなさんご指定の日本語版wiki(https://www.whiteoutsurvival.wiki/ja/heroes/)
+//   を出典として、skillNameの実際の和名(日本語の固有名詞)が確認できた場合にのみ設定する。9個の並列調査
+//   エージェントが、日本語版wikiの効果文(数値)とskillNameの英語版効果文(数値)を突き合わせて対応を確認した。
+//   「確定」(数値・構造とも一致、複数英雄で相互確認済み)のものはskillNameJaを設定し、「候補」(数値は
+//   唯一の該当箇所だが名称の語義的対応や英語版原文との突合ができていないもの)も、他に候補がなく実務上
+//   十分な確度があるため設定した上でコメントに「(候補)」等の確度を明記している。UIでは
+//   skillNameJaがあればそれを優先表示し、なければskillName(英語)、それも無ければスキル種別のみを表示する。
+//   この調査の過程で、v4.10までの「要確認」項目のうち複数が新たに解決した(アロンゾのtaken-20%=Iron
+//   Strength/鋼鉄意志、リオンのdealt+20%=Song of Lion/獅子の歌、グエンのdealt+25%=Eagle Vision/ホークアイ、
+//   レネのdealt+30%=Dreamcatcher/ドリームイーター)。またシュラのarcher/dealt・archer/taken転置疑いは、
+//   日本語版wikiの数値が本データの既存値(taken-15%/dealt+10%)とそのまま一致したため解消(転置ではなかった)。
+//   一方、ウルカヌスの才能バフについては、日本語版wikiに実際に4つの才能スキルが掲載されていることが判明し、
+//   v4.10で懸念されていた「データ欠落」がほぼ確定した(ただし今回はまだ計算に反映していない、要たちばなさん判断)。
+const HEROES = {
+  // 2026/08/15、v4.9のフィードバック(「なんのスキルが発動しているか具体的に書け」)を受け、
+  // wostools.net/wiki/heroes/の各英雄ページを調査し、既存のpct値と一致する実際のスキル名を可能な限り
+  // 追記した(v4.10)。数値が一致し英雄1体につき1スキルへの帰属が明確なもののみskillNameを設定し、
+  // 複数候補が同値で区別できないもの・数値が一致するスキルが探索(Exploration)専用スキルに分類されて
+  // いるもの(才能スキルとして扱うのは本来不整合)・そもそも一致するスキルが見つからなかったものは、
+  // 未確定として空欄のままにしている(捏造しない)。各英雄のコメントに調査結果の詳細を記載。
+  natalia: { name: 'ナタリア(盾兵/S1)', role: 'shield',
+    // wiki実名: Natalia。「Call of the Wild」は常時dealt+25%(max lv値と一致)。
+    // 「Feral Protection」(v4.11でprocBuffsへ移行): "40% chance of reducing all troops' Damage Taken by
+    // 10/20/30/40/50%"(wostools.net、2026/08/15再確認)。max lv: chance40%×magnitude50%=期待値20%減で
+    // 従来のtaken-20%と数値は一致(変更なし)。表示上は40%の確率でターンごとに発動有無が変わる形にした。
+    // v4.12: 和名を日本語版wiki(whiteoutsurvival.wiki/ja)で確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Call of the Wild', skillNameJa: '野獣召喚' }],
+    procBuffs: [{ scope: 'all', stat: 'taken', chance: 0.40, magnitude: -0.50, skillName: 'Feral Protection', skillNameJa: '野性の守護' }],
+    equip: { statPct: 0.555, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Invincibles', skillNameJa: '不敗の軍' } } },
+  geronimo: { name: 'ジェロニモ(盾兵/S1)', role: 'shield',
+    // wiki実名: Jeronimo。dealt+15%は「Expert Swordsmanship」(4ターン周期中2ターン有効、30%×0.5=15%の期待値近似、
+    // 本来は周期発動スキルの可能性が高いが今回は命名のみ対応し常時倍率のモデルは維持)。
+    // hp+15%はwostools.net(英語)上「Natural Leader」(探索専用スキル)の数値と一致していたが、v4.12の
+    // 日本語版wiki調査エージェントは「Expedition/Talent Skills」区分としてこのスキルを確認しており、
+    // 両ソースの分類が食い違っている(探索専用か才能スキルか未解決)。数値自体は一致するため和名は
+    // 参考として記載するが、計算対象に含めるかどうかの判断が付くまでskillName/skillNameJaは未設定のまま保留する。
+    // (和名候補: 天性のリーダー、要確認: 探索専用/才能スキルの分類が情報源により食い違う)
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Battle Manifesto', skillNameJa: '決起集会' }, { scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Expert Swordsmanship', skillNameJa: '練達なる剣技' }, { scope: 'all', stat: 'hp', pct: 0.15 /* 要確認: Natural Leader(天性のリーダー)の分類(探索専用か才能スキルか)が情報源により食い違うため未確定 */ }],
+    equip: { statPct: 0.625, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Discernment', skillNameJa: '真実の術' } } },
+  jasmine: { name: 'ジャスミン(槍兵/S1)', role: 'spear',
+    // wiki実名: Molly(JP版で「ジャスミン」に改名されている可能性が高い。役割・世代・数値は完全一致)。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'taken', pct: -0.20, skillName: "Snow's Grace", skillNameJa: '雪霧の庇護' }, { scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Youthful Rage', skillNameJa: '不機嫌少女' }],
+    equip: { statPct: 0.50, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Snowy Blessing', skillNameJa: '雪の庇護' } } },
+  jinman: { name: 'ジンマン(弓兵/S1)', role: 'archer',
+    // wiki実名: Zinman。taken/hpは同一スキル「Implacable」のDefense/Health2成分への分解。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Implacable', skillNameJa: '堅固' }, { scope: 'all', stat: 'hp', pct: 0.10, skillName: 'Implacable', skillNameJa: '堅固' }, { scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Positional Battler', skillNameJa: '陣地戦の強者' }],
+    equip: { statPct: 0.50, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Defend to Attack', skillNameJa: '攻撃は最大の防御' } } },
+  flint: { name: 'フリント(盾兵/S2)', role: 'shield',
+    // wiki実名: Flint。all/dealt+25%は「Burning Resolve」(Attack+25%、和名候補: 森林火災)と「Immolation」
+    // (Lethality+25%、和名候補: 灼熱の魂)のどちらもmaxで+25%となり区別不能なため、skillNameは未確定のままとする。
+    // v4.12: Pyromaniac/Dragonbreathの和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'shield', stat: 'dealt', pct: 1.00, skillName: 'Pyromaniac', skillNameJa: '野火' }, { scope: 'all', stat: 'dealt', pct: 0.25 /* 要確認: Burning Resolve(森林火災) or Immolation(灼熱の魂)、数値が同一で区別不可 */ }],
+    equip: { statPct: 0.60, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Dragonbreath', skillNameJa: '竜の吐息' } } },
+  flenda: { name: 'フレンダー(槍兵/S2)', role: 'spear',
+    // wiki実名: Philly(JP版で改名の可能性)。dealt/taken(-10%)は同一スキル「Vigor Tactics」の分解。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Vigor Tactics', skillNameJa: '強健の秘訣' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Vigor Tactics', skillNameJa: '強健の秘訣' }, { scope: 'all', stat: 'taken', pct: -0.20, skillName: 'Energizing Shot', skillNameJa: '専心の神薬' }],
+    equip: { statPct: 0.60, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'First Aid Training', skillNameJa: '救急訓練' } } },
+  alonzo: { name: 'アロンゾ(弓兵/S2)', role: 'archer',
+    // wiki実名: Alonso。v4.12で日本語版wiki調査により、taken-20%は「Iron Strength」(和名: 鋼鉄意志、
+    // "granting all troops' attacks a 20% chance of reducing enemy damage by 10-50% for 2 turns"、
+    // 発動条件・確率・数値が完全一致)であることが判明し、v4.10からの「要確認」が解決した。
+    buffs: [{ scope: 'all', stat: 'taken', pct: -0.20, skillName: 'Iron Strength', skillNameJa: '鋼鉄意志' }, { scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Poison Harpoon', skillNameJa: '毒の銛' }],
+    equip: { statPct: 0.60, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Harpoon Enhancement', skillNameJa: '銛強化' } } },
+  logan: { name: 'ローガン(盾兵/S3)', role: 'shield',
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'taken', pct: -0.20, skillName: 'Lion Intimidation', skillNameJa: '猛き獅子の威嚇' }, { scope: 'all', stat: 'hp', pct: 0.25, skillName: 'Leader Inspiration', skillNameJa: 'リーダーの鼓舞' }],
+    equip: { statPct: 0.70, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Strong Protection', skillNameJa: '鉄腕の守り' } } },
+  mia: { name: 'ミア(槍兵/S3)', role: 'spear',
+    // v4.11でprocBuffsへ移行(wostools.net、2026/08/15再確認)。
+    // 「Lucky Charm」: "50% chance...dealing 10/20/30/40/50% more damage" → max: 50%×50%=期待値25%(従来のdealt+25%と一致、変更なし)。
+    // 「Ritual Deciphering」: "40% chance of reducing damage taken by 10/20/30/40/50%" → max: 40%×50%=期待値20%減(従来のtaken-20%と一致、変更なし)。
+    // v4.12: 和名を日本語版wikiで確認(確率・数値完全一致)。
+    procBuffs: [
+      { scope: 'all', stat: 'dealt', chance: 0.50, magnitude: 0.50, skillName: 'Lucky Charm', skillNameJa: '幸運の加護' },
+      { scope: 'all', stat: 'taken', chance: 0.40, magnitude: -0.50, skillName: 'Ritual Deciphering', skillNameJa: '秘儀の解読' },
+    ],
+    equip: { statPct: 0.70, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Rally of Fate', skillNameJa: '宿命の集結' } } },
+  greg: { name: 'グレッグ(弓兵/S3)', role: 'archer',
+    // 「Sword of Justice」(v4.11でprocBuffsへ移行、wostools.net再確認): "20% chance of increasing damage
+    // dealt by 8/16/24/32/40% for all troops for 3 turns" → max: 20%×40%=期待値8%(従来のdealt+8%と一致、変更なし)。
+    // ※実際は発動後3ターン持続する仕組みだが、本ツールでは他の確率発動スキルと同様「毎ターン独立にchanceで
+    // 判定」という単純化で近似している(要確認・今後の課題)。
+    // v4.12: 和名を日本語版wikiで確認(確率・数値・持続ターン数まで完全一致)。
+    buffs: [{ scope: 'all', stat: 'hp', pct: 0.25, skillName: 'Law and Order', skillNameJa: '秩序の庇護' }],
+    procBuffs: [{ scope: 'all', stat: 'dealt', chance: 0.20, magnitude: 0.40, skillName: 'Sword of Justice', skillNameJa: '正義の剣' }],
+    equip: { statPct: 0.70, skill: { mode: 'attack', scope: 'all', stat: 'hp', skillName: 'Trumpet of Justice', skillNameJa: '正義のラッパ' } } },
+  akmos: { name: 'アクモス(盾兵/S4)', role: 'shield',
+    // wiki実名: Ahmose。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'shield', stat: 'dealt', pct: 1.00, skillName: 'Prayer of Flame', skillNameJa: '火の祈願' }],
+    equip: { statPct: 0.925, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Oath of Guardian', skillNameJa: '守護者の誓い' } } },
+  raina: { name: 'レイナ(槍兵/S4)', role: 'spear',
+    // wiki実名: Reina。taken-20%は「Swift Jive」(全軍20%回避率)を回避=被ダメ軽減とみなした近似値
+    // (確率発動の被ダメ軽減スキルとの意味的な違いに注意、他に一致する候補なし)。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.30, skillName: "Assassin's Instinct", skillNameJa: '暗殺者の本能' }, { scope: 'all', stat: 'taken', pct: -0.20, skillName: 'Swift Jive', skillNameJa: '残像の足跡' }],
+    equip: { statPct: 0.925, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Fiery Invasion', skillNameJa: '炎の如き略奪' } } },
+  lyon: { name: 'リオン(弓兵/S4)', role: 'archer',
+    // wiki実名: Lynn。v4.12で日本語版wiki調査により、dealt+20%は「Song of Lion」(和名: 獅子の歌、
+    // "40% chance of increasing damage dealt by 10-50%"、確率40%が一致)であることが判明し、
+    // v4.10からの「要確認」が解決した(ただし+20%がどのレベル値に当たるかは未確認のまま)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20, skillName: 'Song of Lion', skillNameJa: '獅子の歌' }], enemyDebuff: { stat: 'dealt', pct: -0.20, skillName: 'Melancholic Ballad', skillNameJa: '悲しき音色' },
+    equip: { statPct: 0.925, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: "Iranon's Determination", skillNameJa: 'イラノンの執念' } } },
+  guen: { name: 'グエン(弓兵/S5)', role: 'archer',
+    // wiki実名: Gwen。v4.12で日本語版wiki調査により、dealt+25%は「Eagle Vision」(和名: ホークアイ、
+    // "increasing target's Damage Taken by 5-25%"、数値完全一致)であることが判明したが、対象単体への
+    // デバフというスキルの性質は、本データの「全軍dealt+25%」という常時バフの扱いとは異なる点に注意
+    // (要確認事項として残す)。dealt+20%は2つの候補(Air Dominance/空中制圧、Blastmaster/空中制圧)いずれも
+    // 数値が一致せず未確定のまま。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Eagle Vision', skillNameJa: 'ホークアイ' /* 要確認: 本来は対象単体デバフで、全軍常時バフとして扱う本データの前提と性質が異なる */ }, { scope: 'all', stat: 'dealt', pct: 0.20 /* 要確認: 一致するスキルが見つからず */ }],
+    equip: { statPct: 1.11, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Marauder', skillNameJa: 'ストライカー' } } },
+  // ヘクトー・ノラ: 2026/08/15にwostools.net/wiki/heroes/hector,norahで裏取りして追加(以前は49体のリストに
+  // 欠落していた)。才能・遠征スキルの数値・発動条件はwiki記載値を基に期待値換算(下記コメント参照)。
+  // equip.statPctは公式データが見つからず、同世代(S5)のグエンの値(1.11)を暫定的に流用した未検証の推定値。
+  hector: { name: 'ヘクトー(盾兵/S5)', role: 'shield',
+    // 「Survival Instincts」(v4.11でprocBuffsへ移行、wostools.net再確認): "40% chance of reducing damage
+    // taken by 10/20/30/40/50% for all troops" → max: 40%×50%=期待値20%減(従来のtaken-20%と一致、変更なし)。
+    // ※Rampant(歩兵与ダメ+200%/弓兵+100%、10回攻撃で逓減)、Blitz(25%確率で120〜200%ダメージ)は
+    // 発動条件・持続の実装が複雑(逓減/クリティカル的な単発効果)なため引き続き未反映(保留)。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    procBuffs: [{ scope: 'all', stat: 'taken', chance: 0.40, magnitude: -0.50, skillName: 'Survival Instincts', skillNameJa: '生存本能' }],
+    equip: { statPct: 1.11, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Goliath', skillNameJa: '難攻不落' } } }, // Goliath: 防衛部隊攻撃+15%(満Lv)
+  norah: { name: 'ノラ(槍兵/S5)', role: 'spear',
+    // Valkyrie Cry: 全軍与ダメ+5%(常時) / Combined Arms: 盾兵・弓兵の与ダメ+15%・被ダメ-15%(常時)
+    // v4.12: 和名を日本語版wiki(たちばなさんご指定、https://www.whiteoutsurvival.wiki/ja/)で確認。
+    buffs: [
+      { scope: 'all', stat: 'dealt', pct: 0.05, skillName: 'Valkyrie Cry', skillNameJa: '電光石火' },
+      { scope: 'shield', stat: 'dealt', pct: 0.15, skillName: 'Combined Arms', skillNameJa: '多兵種戦術' }, { scope: 'shield', stat: 'taken', pct: -0.15, skillName: 'Combined Arms', skillNameJa: '多兵種戦術' },
+      { scope: 'archer', stat: 'dealt', pct: 0.15, skillName: 'Combined Arms', skillNameJa: '多兵種戦術' }, { scope: 'archer', stat: 'taken', pct: -0.15, skillName: 'Combined Arms', skillNameJa: '多兵種戦術' },
+    ],
+    // 【v4.11で追加】「Sneak Strike」: これまで本データに存在しなかった、たちばなさんご指摘の
+    // 「槍兵が攻撃する際、20%の確率で敵全体に追加ダメージ」に該当するスキル(2026/08/15、
+    // wostools.net/wiki/heroes/norahで確認: "granting her Lancers a 20% chance of dealing
+    // 20%/40%/60%/80%/100% extra damage to all enemies on attack")。v4.10まで完全に欠落していたため、
+    // 「発動したスキル」欄に一切表示されなかった(=ご指摘の不具合の直接の原因)。procBuffsとして追加し、
+    // 期待値(20%×100%=20%、maxLv想定)を常時分に加算しつつ、表示上は20%の確率でターンごとに
+    // 発動有無が変わる形にした。v4.12: 日本語版wikiで和名「急所突き」を確認(たちばなさんの原文の
+    // 表現「20%の確率で敵全体に追加ダメージ」とも一字一句一致)。
+    procBuffs: [
+      { scope: 'spear', stat: 'dealt', chance: 0.20, magnitude: 1.00, skillName: 'Sneak Strike', skillNameJa: '急所突き' },
+    ],
+    // Momentum: 槍兵5回攻撃ごとに2ターンだけ、全軍与ダメ+25%・被ダメ-25%が発動する周期スキル
+    // ("increasing all troops' Damage Dealt...and reducing damage taken...every 5 attack made by
+    // lancer for 2 turns"。確率ではなく攻撃回数による確定的なトリガーのため、引き続きperiodicBuffsのまま扱う)。
+    // v4.4までは期待値(25%×2/5=10%)として常時一定倍率で近似していたが、v4.5で実際に
+    // 「5ターン周期のうち2ターンだけON」という発動タイミングそのものを再現する形に変更した。
+    // どのターンから位相が始まるかは資料から確定できないため、便宜上「各5ターンサイクルの最初の2ターン
+    // (1,2,6,7,11,12…ターン目)」を有効とする仮定を置いている(比率25%×2/5=10%という期待値自体は不変)。
+    // v4.12: 和名「追撃攻勢」を日本語版wikiで確認。
+    periodicBuffs: [
+      { scope: 'all', stat: 'dealt', pct: 0.25, cycleTurns: 5, activeTurns: 2, skillName: 'Momentum', skillNameJa: '追撃攻勢' },
+      { scope: 'all', stat: 'taken', pct: -0.25, cycleTurns: 5, activeTurns: 2, skillName: 'Momentum', skillNameJa: '追撃攻勢' },
+    ],
+    equip: { statPct: 1.11, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'True Grit', skillNameJa: '冷静沈着' } } }, // True Grit: 防衛部隊防御+15%(満Lv)
+  mumei: { name: '無名(盾兵/S6)', role: 'shield',
+    // wiki実名: Wu Ming(「無名」の直訳と一致)。v4.12: 日本語版wikiで和名を確認したが、このページのみ
+    // 通常の和文ではなく漢語調の四字熟語表記になっている(他英雄と様式が異なる、ローカライズ上の特徴の
+    // 可能性、要注意)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20, skillName: 'Crescent Uplift', skillNameJa: '半月沖霄' }, { scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Elemental Resonance', skillNameJa: '四象分明' }],
+    equip: { statPct: 1.335, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Steel Discipline', skillNameJa: '萬夫莫敵' } } },
+  rene: { name: 'レネ(槍兵/S6)', role: 'spear',
+    // wiki実名: Renee。v4.12で日本語版wiki調査により、dealt+30%は「Dreamcatcher」(和名: ドリームイーター、
+    // "increasing damage dealt to marked targets by 30%")であることが判明し、v4.10からの「一致するスキルが
+    // 見つからない」という「要確認」が解決した(wostools.netには掲載されていなかったスキル)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.30, skillName: 'Dreamcatcher', skillNameJa: 'ドリームイーター' }],
+    equip: { statPct: 1.335, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Wistful Enchantment', skillNameJa: '美しい幻想' } } },
+  wayne: { name: 'ウェイン(弓兵/S6)', role: 'archer',
+    // dealt+20%は一致するスキルが見つからず未確定(v4.12日本語版wiki調査でも、候補「サンダーサプライズ」の
+    // Lv1値=20%以外に確証が持てず、断定は見送った)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20 /* 要確認: 一致するスキルが見つからず(候補: サンダーサプライズLv1、確証なし) */ }],
+    equip: { statPct: 1.335, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Offensive Defense', skillNameJa: '先手必勝' } } },
+  edith: { name: 'エディス(盾兵/S7)', role: 'shield',
+    // archer/taken・spear/dealtは同一スキル「Strategic Balance」の2成分。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'hp', pct: 0.25, skillName: 'Steel Sentinel', skillNameJa: '鋼甲護体' }, { scope: 'archer', stat: 'taken', pct: -0.20, skillName: 'Strategic Balance', skillNameJa: '攻守両立' }, { scope: 'spear', stat: 'dealt', pct: 0.20, skillName: 'Strategic Balance', skillNameJa: '攻守両立' }],
+    equip: { statPct: 1.605, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Fortworks', skillNameJa: '堅固な工事' } } },
+  gordon: { name: 'ゴードン(槍兵/S7)', role: 'spear',
+    // spear/dealt+50%・敵デバフ-10%とも、wiki記載のいずれのスキルレベルとも一致せず未確定
+    // (候補: Venom Infusion/Chemical Terrorだが、いずれもmax値が50%/-10%にならない)。v4.12で日本語版wikiも
+    // 再調査したが、やはり該当する数値のスキルは見つからなかった(毒の刃20-100%、毒の恐怖30-150%等はいずれも
+    // 不一致)。2つの独立したソースで見つからないため、pct値自体の裏取り誤りの可能性がさらに高まった。
+    buffs: [{ scope: 'spear', stat: 'dealt', pct: 0.50 /* 要確認: 日英2ソースで一致するスキルが見つからず */ }], enemyDebuff: { stat: 'dealt', pct: -0.10 /* 要確認: 日英2ソースで一致するスキルが見つからず */ },
+    equip: { statPct: 1.605, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Bio Assault', skillNameJa: '毒の侵略' } } },
+  bradley: { name: 'ブラッドリー(弓兵/S7)', role: 'archer',
+    // dealt+15%は「Veteran's Might」の下位レベルか「Power Shot」の歩兵専用成分か区別不可のため未確定
+    // (v4.12日本語版wiki調査でも複数候補があり一意特定不可)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: "Veteran's Might", skillNameJa: '老兵の誇り' }, { scope: 'all', stat: 'dealt', pct: 0.15 /* 要確認: Veteran's Mightの下位Lvか、Power Shotの歩兵専用成分か区別不可 */ }],
+    equip: { statPct: 1.605, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Siege Insight', skillNameJa: '精密な布陣' } } },
+  gato: { name: 'ガト(盾兵/S8)', role: 'shield',
+    // wiki実名: Gatot。才能スキル欄が空なのは実際に合致(常時発動の全軍バフ系スキルを持たない)ことを確認済み。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [], enemyDebuff: { stat: 'dealt', pct: -0.25, skillName: 'Royal Legion', skillNameJa: '王者の師' },
+    equip: { statPct: 1.93, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Indestructible City', skillNameJa: '不滅の城' } } },
+  sonya: { name: 'ソニヤ(槍兵/S8)', role: 'spear',
+    // dealt+12.5%は「Bounty Temptation」(2ターンサイクルの1ターンのみ有効、25%×0.5=12.5%の期待値近似)。
+    // v4.12: 和名を日本語版wikiで確認。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20, skillName: 'Treasure Hunter', skillNameJa: 'トレジャーハンター' }, { scope: 'all', stat: 'dealt', pct: 0.125, skillName: 'Bounty Temptation', skillNameJa: '賞金の誘惑' }],
+    equip: { statPct: 1.93, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Vortex Turret', skillNameJa: '渦潮砲台' } } },
+  hendrick: { name: 'ヘンドリック(弓兵/S8)', role: 'archer',
+    // wiki実名: Hendrik。dealt+25%は「Worm's Ravage」(敵防御力-25%を自軍与ダメ増と近似)。
+    // taken-15%は「Armor of Barnacles」(4ターン周期中2ターン有効、30%×0.5=15%の期待値近似)。
+    // v4.12: 和名を日本語版wikiで確認。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: "Worm's Ravage", skillNameJa: '蠕虫のかみつき' }, { scope: 'all', stat: 'taken', pct: -0.15, skillName: 'Armor of Barnacles', skillNameJa: 'フジツボの鎧' }],
+    equip: { statPct: 1.93, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Abyssal Blessing', skillNameJa: '深淵の加護' } } },
+  magnus: { name: 'マグヌス(盾兵/S9)', role: 'shield',
+    // taken-15%はwiki上「Heroic Stock」(探索専用スキル)の数値と一致するが、探索専用スキルは本来
+    // 才能スキルとして計算に含めるべきでない(前提条件の除外方針と矛盾)ため、skillNameは付与せず保留する
+    // (和名候補: 勇者の血脈。v4.12日本語版wikiでも探索/遠征寄りの専属装備スキルとして扱われていることを再確認)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Rapacious', skillNameJa: '怒りの波' }, { scope: 'all', stat: 'taken', pct: -0.15 /* 要確認: Heroic Stock(勇者の血脈)は探索専用寄りのスキルのため未確定 */ }],
+    equip: { statPct: 2.32, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Valoric Inspiration', skillNameJa: '英霊の意志' } } },
+  fred: { name: 'フレッド(槍兵/S9)', role: 'spear',
+    // spear/dealt+50%・all/dealt+20%・敵デバフ-5%のいずれも、wiki記載のスキルレベルと一致せず未確定。
+    // v4.12で日本語版wikiも再調査したが、フレッドの才能スキル6つ(人工降雨・高圧水銃・特級警戒・放水砲制圧・
+    // 酸性溶液・猛烈な攻勢)のいずれにも該当する数値が無く、2つの独立ソースで見つからないため、
+    // pct値自体の裏取り誤りの可能性がさらに高まった。
+    buffs: [{ scope: 'spear', stat: 'dealt', pct: 0.50 /* 要確認: 日英2ソースで一致するスキルが見つからず */ }, { scope: 'all', stat: 'dealt', pct: 0.20 /* 要確認: 同上 */ }], enemyDebuff: { stat: 'dealt', pct: -0.05 /* 要確認: 同上 */ },
+    equip: { statPct: 2.32, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Call of the Firefighter', skillNameJa: '英傑の鼓舞' } } },
+  shura: { name: 'シュラ(弓兵/S9)', role: 'archer',
+    // wiki実名: Xura。【v4.12で解決】v4.10時点ではwostools.net(英語)上の「Unorthodoxy」の数値
+    // (dealt+15%/taken-10%)と本データ(archer/taken-15%/dealt+10%)が逆に見え、転置を疑っていたが、
+    // たちばなさんご指定の日本語版wikiを直接確認したところ「弓兵の被ダメージ低下…15%、与ダメージ上昇…10%」と、
+    // 本データの値(taken-15%/dealt+10%)とそのまま一致した。つまり転置ではなく、本データの数値は正しく、
+    // wostools.net側の記載(または当方の転記)が実際とは逆だった可能性が高い。この件はこれで解消とする。
+    // all/dealt+15%は日本語版wikiでもシュラの全6スキル中に該当するものが見つからず未確定のまま。
+    buffs: [{ scope: 'archer', stat: 'taken', pct: -0.15, skillName: 'Unorthodoxy', skillNameJa: '変幻自在' }, { scope: 'archer', stat: 'dealt', pct: 0.10, skillName: 'Unorthodoxy', skillNameJa: '変幻自在' }, { scope: 'all', stat: 'dealt', pct: 0.15 /* 要確認: 日英2ソースとも一致するスキルが見つからず */ }],
+    equip: { statPct: 2.32, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Gaiac Hymn', skillNameJa: '大地の祝福' } } },
+  gregory: { name: 'グレゴリー(盾兵/S10)', role: 'shield',
+    // dealt/taken(1本目)は同一スキル「Legion of the Sun」のAttack/Defense成分(2本目のdealt+10%は一致するスキルが見つからず未確定)。
+    // v4.12: 和名を日本語版wikiで確認。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Legion of the Sun', skillNameJa: '灼熱の軍団' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Legion of the Sun', skillNameJa: '灼熱の軍団' }, { scope: 'all', stat: 'dealt', pct: 0.10 /* 要確認: 一致するスキルが見つからず */ }],
+    equip: { statPct: 2.775, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Day of the Guard', skillNameJa: '灼熱の堅城' } } },
+  freya: { name: 'フレイヤ(槍兵/S10)', role: 'spear',
+    // shield/archer(taken・dealt)4本は同一スキル「Night's Vengeance」の分解。spear/dealt+30%はwiki上
+    // 「Night Raid」(探索専用スキル)の数値と一致するが、探索専用スキルのため才能スキルとして計算に
+    // 含めるべきでない(前提条件の除外方針と矛盾)ため、skillNameは付与せず保留する。v4.12で日本語版wikiも
+    // 確認したが、フレイヤの才能スキル一覧に「槍兵」への言及自体が一切なく、探索専用スキル疑惑がさらに強まった。
+    buffs: [{ scope: 'shield', stat: 'taken', pct: -0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'archer', stat: 'taken', pct: -0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'shield', stat: 'dealt', pct: 0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'archer', stat: 'dealt', pct: 0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'spear', stat: 'dealt', pct: 0.30 /* 要確認: Night Raidは探索専用スキルの可能性が高い(日英2ソースとも槍兵への言及なし) */ }],
+    equip: { statPct: 2.775, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Defender of the Watch', skillNameJa: '闇夜の見張り' } } },
+  blanche: { name: 'ブランシュ(弓兵/S10)', role: 'archer',
+    // wiki実名: Blanchette。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Armed to the Teeth', skillNameJa: '真紅の刃' }],
+    equip: { statPct: 2.775, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Lightning Strike', skillNameJa: '炎紅の雷霆' } } },
+  eleonora: { name: 'エリオノーラ(盾兵/S11)', role: 'shield',
+    // taken/dealtは同一スキル「Majestic Corona」の分解(wiki表記は「本人の」被ダメ/与ダメだが、
+    // 数値は全軍バフと完全一致)。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'taken', pct: -0.15, skillName: 'Majestic Corona', skillNameJa: '日輪の威厳' }, { scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Majestic Corona', skillNameJa: '日輪の威厳' }, { scope: 'all', stat: 'hp', pct: 0.25, skillName: 'Scorching Sun', skillNameJa: '烈日の威光' }],
+    equip: { statPct: 3.20, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Last Fortress', skillNameJa: '最後の砦' } } },
+  lloyd: { name: 'ロイド(槍兵/S11)', role: 'spear',
+    // dealt+20%は一致するスキルが見つからず未確定(v4.12日本語版wiki調査で候補「千変万化」が見つかったが、
+    // 確率40%条件が本データに無い・どのレベル値かも未確認のため断定は見送る)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20 /* 要確認: 候補「千変万化」(40%確率でdealt+10〜50%)はあるが断定できず */ }], enemyDebuff: { stat: 'dealt', pct: -0.20, skillName: 'Bird Invasion', skillNameJa: '群鳥の侵襲' },
+    equip: { statPct: 3.20, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Steel Maze', skillNameJa: '鋼鉄の迷城' } } },
+  rufus: { name: 'ルーファス(弓兵/S11)', role: 'archer',
+    // 敵デバフ-10%は「Wrathful Quake」のLv1値(maxはLv5で-50%、かつ20%確率発動)と一致。日本語版wikiでも
+    // 「20%の確率で敵の殺傷力を10〜50%低下、2ターン持続」とLv1値・確率とも完全一致することを確認したが、
+    // 実際は確率・レベル前提が本データ(常時-10%として計算)と異なる可能性がある点は引き続き要確認。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Inferno Regiment', skillNameJa: '火焔戦団' }], enemyDebuff: { stat: 'dealt', pct: -0.10, skillName: 'Wrathful Quake', skillNameJa: '苛烈震撼' /* 要確認: 実際はLv1値かつ20%確率発動、常時-10%として計算している本データとの前提の整合は未確認 */ },
+    equip: { statPct: 3.20, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Blazing Legion', skillNameJa: '烈火旅団' } } },
+  helvir: { name: 'ヘルヴィル(盾兵/S12)', role: 'shield',
+    // wiki実名: Hervor。shield/taken・shield/dealtは同一スキル「Battlethirsty」の分解。
+    // v4.12: Battlethirstyの和名は日本語版wikiで数値完全一致確認。Call For Blood/Fort of Rockの和名は、
+    // 効果内容(全軍dealt+25%、防衛部隊防御+15%)に該当するのがページ内で唯一の候補という消去法での特定
+    // (英語原文との語義的対応までは確認できていない、確度: 候補)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Call For Blood', skillNameJa: 'ウォーラウド' /* 候補: 数値のみ一致、語義的対応は未確認 */ }, { scope: 'shield', stat: 'taken', pct: -0.15, skillName: 'Battlethirsty', skillNameJa: '戦火の意志' }, { scope: 'shield', stat: 'dealt', pct: 0.10, skillName: 'Battlethirsty', skillNameJa: '戦火の意志' }],
+    equip: { statPct: 3.625, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Fort of Rock', skillNameJa: 'フロストガード' /* 候補: 構造上の位置のみ根拠、語義的対応は未確認 */ } } },
+  carol: { name: 'カロール(槍兵/S12)', role: 'spear',
+    // wiki実名: Karol。dealt/taken(1本目)は同一スキル「Standard of Ages」のAttack/Defense成分。
+    // v4.12: Standard of Ages/In the Wingsは数値完全一致で確認。Triumphant Marchは構造上唯一の候補(確度: 候補)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Standard of Ages', skillNameJa: '栄光の戦旗' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Standard of Ages', skillNameJa: '栄光の戦旗' }, { scope: 'all', stat: 'taken', pct: -0.20, skillName: 'In the Wings', skillNameJa: '守護の翼' }],
+    equip: { statPct: 3.625, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Triumphant March', skillNameJa: 'フロックアサルト' /* 候補: 構造上の位置のみ根拠 */ } } },
+  lygeia: { name: 'ライジーア(弓兵/S12)', role: 'archer',
+    // wiki実名: Ligeia。dealt+25%は「Nerf Poison」(敵防御-25%)または「Corrosion」の追加ダメージ成分のどちらか
+    // 判別できず(いずれも敵対象への効果で、全軍への直接バフではない点にも注意)、未確定とする。v4.12で
+    // 日本語版wikiも再調査したが、全6スキル+専属装備の効果文いずれにも「全軍dealt+25%」に該当するものが
+    // 見つからなかった。Trap Nestは「ネスト」という語が含まれる点から装備スキルの唯一の候補(確度: 候補)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25 /* 要確認: Nerf PoisonまたはCorrosionの可能性、日英2ソースとも一致するスキルが見つからず */ }],
+    equip: { statPct: 3.625, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Trap Nest', skillNameJa: 'ネストキャッスル' /* 候補: 「ネスト」という語の一致のみ根拠 */ } } },
+  gisela: { name: 'ギーゼラ(盾兵/S13)', role: 'shield',
+    // v4.10時点では「期待値換算されていない可能性」として要確認扱いにしていたが、v4.11でwostools.netの
+    // 記載を再確認したところ、実際にはいずれも正しく期待値換算されていたことが判明(訂正)。
+    // 「Scavengeworks」: "40% chance of increasing all Troops' Defense by 10/20/30/40/50% for 1 turn" → max: 40%×50%=期待値20%。
+    // 「Trial Shield」: "40% chance of reducing Damage Taken by 10/20/30/40/50%" → max: 40%×50%=期待値20%。
+    // いずれも従来のtaken-20%と数値は一致(変更なし)。v4.11でprocBuffsへ移行し、表示上は40%の確率で
+    // ターンごとに発動有無が変わる形にした。v4.12: 和名は日本語版wikiの「臨時防衛工事」「試作型シールド」の
+    // どちらも同一のchance40%×magnitude10-50%で、数値だけでは区別できない。効果説明文の意味的対応
+    // (Scavengeworks=素材活用≒臨時防衛工事、Trial Shield=試作シールド≒試作型シールド)から推定して割り当てた
+    // (確度: 候補、断定はできない)。
+    procBuffs: [
+      { scope: 'all', stat: 'taken', chance: 0.40, magnitude: -0.50, skillName: 'Scavengeworks', skillNameJa: '臨時防衛工事' /* 候補: 意味的対応のみ根拠、数値だけでは区別不可 */ },
+      { scope: 'all', stat: 'taken', chance: 0.40, magnitude: -0.50, skillName: 'Trial Shield', skillNameJa: '試作型シールド' /* 候補: 同上 */ },
+    ],
+    equip: { statPct: 4.05, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Auto-Target', skillNameJa: '自動砲台' } } },
+  flora: { name: 'フローラ(槍兵/S13)', role: 'spear',
+    // shield/taken・spear/dealtは同一スキル「Plantage」の分解。all/dealt+25%は一致するスキルが見つからず未確定
+    // (spear/dealtの値の重複・誤分類の可能性あり)。v4.12で日本語版wikiも再調査したが、フローラの全8スキル
+    // (才能6+専属装備2)いずれにも「全軍dealt+25%」に該当するものが見つからなかった。
+    buffs: [{ scope: 'shield', stat: 'taken', pct: -0.25, skillName: 'Plantage', skillNameJa: '茨の花園' }, { scope: 'spear', stat: 'dealt', pct: 0.25, skillName: 'Plantage', skillNameJa: '茨の花園' }, { scope: 'all', stat: 'dealt', pct: 0.25 /* 要確認: 日英2ソースとも一致するスキルが見つからず、spear/dealtとの重複の可能性 */ }],
+    equip: { statPct: 4.05, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Fruit of Life', skillNameJa: '自然の祝福' } } },
+  vulcanus: { name: 'ウルカヌス(弓兵/S13)', role: 'archer',
+    // 【重要・要たちばなさん判断】v4.10時点ではwostools.net(英語)にウルカヌスの才能スキルとして「Fire of
+    // Hope」「Breaker Steel」「True Strike」の3つが存在するのを確認していたが、本データの才能バフは空欄の
+    // ままだった。v4.12でたちばなさんご指定の日本語版wikiを直接確認したところ、実際には才能スキルが4つ
+    // (攻撃/防御バフ・敵デバフ・周期発動の追加ダメージ・周期発動のデバフ+バフ)存在することが判明し、
+    // 「データ欠落」がほぼ確定した。ただし、これらを計算に反映するとウルカヌスの戦闘力が変わる(現状より
+    // 強くなる)ため、今回は数値を追加せず、日本語版wikiで確認した内容をそのまま記録するに留める:
+    //   1.篝火の光(Lv.5、全軍dealt+30%/taken(防御)+30%相当)「部隊の護衛の攻撃力が10-30%、防御力が10-30%上昇」
+    //   2.覇者の怒り = Raging Storm(敵デバフdealt-20%、既存データと一致・skillName付与済み)
+    //   3.貫通裂刃(5回攻撃ごとに追加ダメージ20-100%+対象の被ダメ増5-15%、周期/確率型)
+    //   4.破砕の矢(3ターン毎、敵盾兵・槍兵の防御-12〜60%+味方弓兵攻撃+12〜60%、周期型)
+    // 反映するかどうか、また反映する場合はどのレベル値を採用するかは、たちばなさんの判断を仰ぎたい。
+    buffs: [], enemyDebuff: { stat: 'dealt', pct: -0.20, skillName: 'Raging Storm', skillNameJa: '覇者の怒り' },
+    equip: { statPct: 4.05, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Born King', skillNameJa: '王者の威厳' } } },
+  elif: { name: 'エリーフ(盾兵/S14)', role: 'shield',
+    // dealt/takenは同一スキル「Slash Formation」のAttack/Defense成分。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Slash Formation', skillNameJa: '千刃の陣' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Slash Formation', skillNameJa: '千刃の陣' }], enemyDebuff: { stat: 'dealt', pct: -0.25, skillName: 'Shackling Veil', skillNameJa: '軽紗の鎖' },
+    equip: { statPct: 4.475, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: "Guardian's Grace", skillNameJa: '守護の舞' } } },
+  dominic: { name: 'ドミニク(槍兵/S14)', role: 'spear',
+    // shield/archer(taken・dealt)4本は同一スキル「Mirror Maze」の分解。v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20, skillName: 'Mystic Mechanism', skillNameJa: 'イリュージョン' }, { scope: 'shield', stat: 'taken', pct: -0.15, skillName: 'Mirror Maze', skillNameJa: 'ミラーメイズ' }, { scope: 'archer', stat: 'taken', pct: -0.15, skillName: 'Mirror Maze', skillNameJa: 'ミラーメイズ' }, { scope: 'shield', stat: 'dealt', pct: 0.15, skillName: 'Mirror Maze', skillNameJa: 'ミラーメイズ' }, { scope: 'archer', stat: 'dealt', pct: 0.15, skillName: 'Mirror Maze', skillNameJa: 'ミラーメイズ' }],
+    equip: { statPct: 4.475, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Grand Fantasy', skillNameJa: 'イマジンステージ' } } },
+  hank: { name: 'ハンク(盾兵/S15)', role: 'shield',
+    // dealt+10%/taken-10%は「Flying Sparks」(5攻撃ごとに発動、5段階中Lv2相当の値と推定)。本来は
+    // 発動条件(5回攻撃ごと)を持つ周期的スキルの可能性が高く、常時倍率として扱ってよいか要確認。
+    // v4.12: 日本語版wikiでも「盾兵が5回攻撃する度に発動」という条件を確認、和名を付与。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Roaring Rage', skillNameJa: 'レイジングロアー' }, { scope: 'all', stat: 'dealt', pct: 0.10, skillName: 'Flying Sparks', skillNameJa: 'スパークバースト' /* 要確認: 5回攻撃ごとの発動条件あり、常時倍率としての扱いが妥当か未確認 */ }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Flying Sparks', skillNameJa: 'スパークバースト' /* 要確認: 同上 */ }],
+    equip: { statPct: 4.90, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Wall of Despair', skillNameJa: 'ブルーウォール' } } },
+  estella: { name: 'エステラ(槍兵/S15)', role: 'spear',
+    // wiki実名: Estrella。dealt/taken(1本目)は「Dawn Canvas」、shield/taken・spear/dealtは「Splendid Scene」の分解。
+    // v4.12: 日本語版wikiで数値は完全一致確認できたが、このページのみ才能スキル名自体が英語表記のまま
+    // (未翻訳)だったため、和名(skillNameJa)は設定できなかった。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Dawn Canvas' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Dawn Canvas' }, { scope: 'shield', stat: 'taken', pct: -0.25, skillName: 'Splendid Scene' }, { scope: 'spear', stat: 'dealt', pct: 0.25, skillName: 'Splendid Scene' }],
+    equip: { statPct: 4.90, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Homeland Defense', skillNameJa: 'ファントムヘヴン' } } },
+  vivica: { name: 'ヴィヴィカ(弓兵/S15)', role: 'archer',
+    // wiki実名: Viveca。shield/taken・archer/dealtは同一スキル「Children of the Mist」の分解。
+    // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Nightfall Legion', skillNameJa: 'ナイトレギオン' }, { scope: 'shield', stat: 'taken', pct: -0.10, skillName: 'Children of the Mist', skillNameJa: 'ミストチャイルド' }, { scope: 'archer', stat: 'dealt', pct: 0.10, skillName: 'Children of the Mist', skillNameJa: 'ミストチャイルド' }],
+    equip: { statPct: 4.90, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Song of Dawn', skillNameJa: '夜明けの歌' } } },
+  // S16(シガー・ウルタール・アシュリン)は、v4.10時点ではwostools.net(英語)がGeneration 15までしか
+  // カバーしておらず英語名も未確認だったが、v4.12でたちばなさんご指定の日本語版wikiを直接調査したところ
+  // 該当ページが存在し、日本語のスキル名・効果文を新規に確認できた(英語名は依然として不明のためskillNameは
+  // 未設定、skillNameJaのみ設定)。S17の3体(エイダン・ベルサ・エリノ)は日本語版wikiにも該当ページが
+  // 見当たらず、引き続き未確認。
+  seigel: { name: 'シガー(盾兵/S16)', role: 'shield',
+    // 「永夜の堅城」: 「味方盾兵の攻撃力が4/8/12/16/20%低下するが、敵軍の弓兵および槍兵の攻撃力を
+    // 7/14/21/28/35%低下させる」(shield/dealt-20%・敵デバフdealt-35%の両方が同一スキルの2成分であることを確認)。
+    // 装備スキルは「ニヴルヘイムの誓い」(防衛部隊の殺傷力+15%)。
+    buffs: [{ scope: 'shield', stat: 'dealt', pct: -0.20, skillNameJa: '永夜の堅城' }], enemyDebuff: { stat: 'dealt', pct: -0.35, skillNameJa: '永夜の堅城' },
+    equip: { statPct: 5.325, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillNameJa: 'ニヴルヘイムの誓い' } } },
+  ultar: { name: 'ウルタール(槍兵/S16)', role: 'spear',
+    // 敵デバフ-25%は「茸林の迷宮」(敵全体攻撃力-25%、数値完全一致)。才能バフ(spear/dealt+15%+archer/dealt+15%)
+    // は候補「祖霊の角笛」(2ターン毎に槍兵・弓兵の殺傷力+30%、敵防御-30%)があるが、最大値が30%で
+    // 指定値15%の2倍のため数値が一致せず未確定。装備スキルは「暴風の戦鼓」(集結部隊の攻撃力+15%)。
+    buffs: [{ scope: 'spear', stat: 'dealt', pct: 0.15 /* 要確認: 候補「祖霊の角笛」は最大値30%で本データの15%と不一致 */ }, { scope: 'archer', stat: 'dealt', pct: 0.15 /* 要確認: 同上 */ }], enemyDebuff: { stat: 'dealt', pct: -0.25, skillNameJa: '茸林の迷宮' },
+    equip: { statPct: 5.325, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillNameJa: '暴風の戦鼓' } } },
+  aisling: { name: 'アシュリン(弓兵/S16)', role: 'archer',
+    // all/dealt+20%は「密林の戦歌」(全軍与ダメ+20%、数値完全一致)。archer/dealt+50%・敵デバフ-10%は候補
+    // 「矢石の雨」(3ターン毎に弓兵与ダメ+150%、敵全体与ダメ-30%)があるが、最大値が指定値の3倍のため
+    // 数値が一致せず未確定。装備スキルは「庇護の森」(防衛部隊の防御力+15%)。
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.20, skillNameJa: '密林の戦歌' }, { scope: 'archer', stat: 'dealt', pct: 0.50 /* 要確認: 候補「矢石の雨」は最大値150%で本データの50%と不一致 */ }], enemyDebuff: { stat: 'dealt', pct: -0.10 /* 要確認: 同上(矢石の雨は最大-30%) */ },
+    equip: { statPct: 5.325, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillNameJa: '庇護の森' } } },
+  aiden: { name: 'エイダン(盾兵/S17)', role: 'shield',
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15 }, { scope: 'all', stat: 'taken', pct: -0.10 }, { scope: 'all', stat: 'dealt', pct: 0.25 }],
+    equip: { statPct: 5.75, skill: { mode: 'defense', scope: 'all', stat: 'dealt' } } },
+  bertha: { name: 'ベルサ(槍兵/S17)', role: 'spear',
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25 }, { scope: 'all', stat: 'taken', pct: -0.15 }],
+    equip: { statPct: 5.75, skill: { mode: 'defense', scope: 'all', stat: 'dealt' } } },
+  eleanor: { name: 'エリノ(弓兵/S17)', role: 'archer',
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25 }, { scope: 'archer', stat: 'dealt', pct: 0.90 }],
+    equip: { statPct: 5.75, skill: { mode: 'attack', scope: 'all', stat: 'dealt' } } },
+};
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { HEROES };
+
+</script>
+
+<script>
+// ホワイトアウトサバイバル 拠点戦闘シミュレーター(砦・王城・ステーション・要塞など) 計算コア(ブラウザ用)
+//
+// 本ファイルの兵種基礎ステータス(FC_STATS)は wostools.net/wiki/troops/ 掲載の
+// 公式Fire Crystal Troop Statsに基づく値です。英雄データ(HEROES)は各英雄の
+// 才能スキル・専用装備・遠征スキルを転記したもので、個々の数値までは独立検証
+// できていないため未検証部分として扱ってください(ツール内注記あり)。
+//
+// ラウンド経過に伴う「兵科ごとの現存数に応じたダメージ減衰」「勝敗判定」の具体的な
+// 反復処理・陣形/カウンター/火晶スキルのダメージ式への組み込みは、本ツール独自の実装です。
+
+const ORDER = ['shield', 'spear', 'archer']; // 盾兵(歩兵) / 槍兵 / 弓兵
+const TYPE_LABEL_JA = { shield: '盾兵', spear: '槍兵', archer: '弓兵' };
+
+// 三すくみ: 盾→槍、槍→弓、弓→盾 の順に、勝つ側が+10%ダメージ(既定値、編集可)
+const COUNTER = { shield: 'spear', spear: 'archer', archer: 'shield' };
+
+// T7以上の兵科スキル(既定値。ツール上で有効/無効・数値を調整可能)
+const DEFAULT_MECH = {
+  counterBonus: 0.10,   // 相性ボーナス(盾→槍→弓→盾)
+  bandsOfSteel: 0.10,   // 盾兵T7「鋼の帯」: 槍兵に対する被ダメ軽減相当(防御力+10%として反映)
+  volleyMult: 0.10,     // 弓兵T7「連射」: 10%の確率で2回攻撃→期待値として与ダメ+10%
+  ambushRate: 0.20,     // 槍兵T7「奇襲」: 攻撃の20%が後列の弓兵を直接攻撃
+  // 兵力数のダメージ寄与指数。1.0=兵力数に比例、1.0未満(例: 0.5=平方根)にすると、同じ総兵力でも
+  // 兵科が偏っているほうが総ダメージが伸びにくくなる(=兵科を分散させた方が有利になる)。
+  // 「集結・駐屯おすすめ英雄一覧」解説資料の「ダメージは兵力数に比例するが、少ない兵科を増やす方が
+  // 貢献度が高い」という説明を反映するための本ツール独自の拡張。
+  // 【v4.16】以前はUI上の入力欄で1.0(比例)⇄0.5(平方根)を切り替えられる仕様だったが、
+  // 「平方根モデルのみでいい、1.0/0.5という数値表現がわかりにくい」とのご指摘を受け、UI側の入力欄を
+  // 廃止し常に0.5(平方根)を使う仕様にした(app.jsのreadMech参照)。このDEFAULT_MECH側の既定値も
+  // 実際に使われる0.5に合わせてある(兵科ごとの比率が均等[1:1:1]なときはこの指数を入れても入れなくても
+  // 結果は変わらない)。
+  countScalingExponent: 0.5,
+};
+
+// 兵力数を「ダメージ算出用の実効兵力数」に変換する。
+// countScalingExponent(p)=1なら常にcount本人(=従来通りの挙動)。
+// p<1の場合、同じ兵科合計(shield+spear+archer)を保ったまま、多い兵科は相対的に割り引かれ、
+// 少ない兵科は相対的に割り増しされる(=偏った編成ほど総ダメージが伸びにくくなる)。
+// 基準点(全兵科が均等=total/3のとき)では p の値によらず effectiveCount=count のまま変化しない。
+function effectiveCountForDamage(countsThisTurn, type, exponent) {
+  const count = Math.max(0, countsThisTurn[type] || 0);
+  if (count <= 0) return 0;
+  if (exponent == null || Math.abs(exponent - 1) < 1e-9) return count;
+  const total = ORDER.reduce((s, t) => s + Math.max(0, countsThisTurn[t] || 0), 0);
+  const ref = total / 3;
+  if (ref <= 0) return count;
+  return Math.pow(ref, 1 - exponent) * Math.pow(count, exponent);
+}
+
+// ---- 兵種基礎ステータス(T10/T11 × 火晶Lv0-10) ----
+// 出典: wostools.net/wiki/troops/ 掲載の公式Fire Crystal Troop Stats。
+// 各行 = 火晶Lv0〜10、値は [防御, 攻撃, HP, 殺傷力]。
+const FC_STATS = {
+  shield: {
+    10: [[13,10,15,10],[14,11,16,10],[16,12,17,11],[17,13,18,12],[18,13,19,13],[20,14,20,13],[21,14,21,13],[22,15,22,14],[23,15,23,15],[25,16,24,15],[26,18,25,16]],
+    11: [[15,12,17,12],[16,13,18,12],[17,14,19,13],[18,15,20,14],[19,15,21,15],[22,16,22,15],[23,17,23,16],[24,17,24,16],[25,18,25,17],[27,18,26,17],[28,19,27,18]],
+  },
+  spear: {
+    10: [[11,13,11,14],[12,14,11,15],[13,16,12,16],[14,17,13,17],[14,18,13,18],[15,20,14,19],[15,21,14,20],[16,22,15,21],[17,23,15,22],[17,25,16,23],[19,26,17,24]],
+    11: [[13,15,13,16],[14,16,13,17],[15,18,14,18],[16,19,15,19],[16,20,15,20],[17,22,16,21],[18,23,16,22],[18,24,17,23],[19,25,17,24],[19,27,18,25],[21,28,20,26]],
+  },
+  archer: {
+    10: [[10,14,10,15],[11,15,11,16],[12,17,12,17],[13,18,13,18],[14,19,13,19],[14,21,14,20],[15,22,14,21],[15,23,15,22],[16,24,15,23],[17,26,16,24],[19,27,17,25]],
+    11: [[12,16,12,17],[13,17,13,18],[14,19,14,19],[15,20,15,20],[16,21,15,21],[16,23,16,22],[17,24,16,23],[18,25,17,24],[19,26,18,25],[19,28,18,26],[21,30,20,27]],
+  },
+};
+
+function troopStats(type, lv, fc) {
+  const f = Math.max(0, Math.min(10, Math.round(fc)));
+  const a = FC_STATS[type][10][f], b = FC_STATS[type][11][f];
+  const t = Math.max(0, Math.min(1, lv - 10));
+  return {
+    def: a[0] + (b[0] - a[0]) * t,
+    atk: a[1] + (b[1] - a[1]) * t,
+    hp: a[2] + (b[2] - a[2]) * t,
+    leth: a[3] + (b[3] - a[3]) * t,
+  };
+}
+
+// ---- 火晶スキル(兵科固有、火晶Lvに応じて発動) ----
+function fcSkillRaw(type, fc) {
+  const out = { dealt: 1, taken: 1, defBonus: 0, note: [] };
+  const f = Math.round(fc);
+  if (f < 3) return out;
+  if (type === 'spear') {
+    const p = f >= 5 ? 0.15 : 0.10;
+    out.dealt *= (1 + p);
+    out.note.push(`結晶槍: ${(p * 100).toFixed(0)}%で2倍ダメージ(期待値) → 与ダメ×${(1 + p).toFixed(3)}`);
+    if (f >= 8) {
+      const q = f >= 10 ? 0.15 : 0.10;
+      out.taken *= (1 - q * 0.5);
+      out.note.push(`白熱フィールド: ${(q * 100).toFixed(0)}%で被ダメ半減(期待値) → 被ダメ×${(1 - q * 0.5).toFixed(3)}`);
+    }
+  } else if (type === 'archer') {
+    const p = f >= 5 ? 0.30 : 0.20;
+    out.dealt *= (1 + p * 0.5);
+    out.note.push(`結晶火薬: ${(p * 100).toFixed(0)}%で+50%ダメージ(期待値) → 与ダメ×${(1 + p * 0.5).toFixed(3)}`);
+    if (f >= 8) {
+      const au = f >= 10 ? 0.06 : 0.04, ex = f >= 10 ? 0.375 : 0.25;
+      out.dealt *= (1 + au) * (1 + p * ex);
+      out.note.push(`焔の装填: 基本攻撃+${(au * 100).toFixed(0)}%、発動時追加+${(ex * 100).toFixed(1)}% → 与ダメ×${((1 + au) * (1 + p * ex)).toFixed(3)}`);
+    }
+  } else {
+    const p = f >= 5 ? 0.15 : 0.10;
+    out.taken *= (1 - p);
+    out.note.push(`結晶シールド: ダメージ打ち消し(期待値、他兵種との釣り合いから推定) → 被ダメ×${(1 - p).toFixed(3)}`);
+    if (f >= 8) {
+      const db = f >= 10 ? 0.06 : 0.04, ex = f >= 10 ? 0.15 : 0.10;
+      out.defBonus = db;
+      out.taken *= (1 - ex);
+      out.note.push(`光の体: 防御+${(db * 100).toFixed(0)}%、発動時追加軽減 → 被ダメ×${(1 - ex).toFixed(3)}`);
+    }
+  }
+  return out;
+}
+const _fcCache = {};
+function fcSkill(type, fc) {
+  const key = type + '|' + Math.round(fc);
+  if (_fcCache[key]) return _fcCache[key];
+  return (_fcCache[key] = fcSkillRaw(type, fc));
+}
+
+// ---- 英雄バフの合成 ----
+// 同じ(scope,stat)の組み合わせに対する複数の効果量(%)は「加算」してから(1+合計%)を掛ける。
+// 異なるstat(dealt/taken/hp)同士や、異なる由来(英雄バフ/専用装備/火晶スキル/兵の質)は「乗算」で合成する。
+// (「集結・駐屯おすすめ英雄一覧」解説資料の「同じ種類は積算、違う種類は乗算」という説明に準拠)
+function freshModAccum() {
+  return {
+    all: { dealt: 0, taken: 0, hp: 0 },
+    shield: { dealt: 0, taken: 0, hp: 0 },
+    spear: { dealt: 0, taken: 0, hp: 0 },
+    archer: { dealt: 0, taken: 0, hp: 0 },
+  };
+}
+function addPct(accum, scope, stat, pct) {
+  if (!accum[scope]) return;
+  accum[scope][stat] += pct;
+}
+function toMultiplier(accum) {
+  const m = {};
+  for (const scope of ['all', 'shield', 'spear', 'archer']) {
+    m[scope] = {
+      dealt: 1 + accum[scope].dealt / 100,
+      taken: 1 + accum[scope].taken / 100,
+      hp: 1 + accum[scope].hp / 100,
+    };
+  }
+  return m;
+}
+
+// heroSelection = { shield: {heroKey, eqLv}, spear: {...}, archer: {...} }
+// mode = 'attack'(集結) | 'defense'(駐屯)
+// statBuff = { shield:{atk,def,leth,hp}, spear:{...}, archer:{...} } (%, 実際のゲーム内「追加ステータス」
+//             画面(領主装備・ペット・専門家・戦争研究・英雄バフ等すべて込みの合計%)をそのまま入力したもの)
+function buildMods(heroSelection, heroesDb, mode, statBuff, enemyAccumOut) {
+  const accum = freshModAccum();
+  const log = [];
+  const periodic = []; // 確定的な周期(乱数ではない)で発動するスキル。{scope,stat,pct,cycleTurns,activeTurns,heroName,role,skillName,kind}
+  const proc = []; // 確率発動スキル(v4.11で追加)。{scope,stat,chance,magnitude,heroName,role,skillName}
+  // constant: 「常時発動しているスキル」欄に表示するための、常時(または装備レベル・戦闘モードなど戦闘開始時点で
+  // 確定する条件)で発動しているスキル源の一覧。{role,heroName,kind,skillName} 1エントリ=1スキル
+  // (同じ英雄が複数の異なるスキルを持つ場合は、スキルごとに別エントリとして積む)。
+  // kind: '才能スキル' | '専用装備遠征スキル' | '敵デバフ' (どの種類のスキルが発動しているかをUIで区別するため)
+  // ※ 確率発動スキル(procBuffs)はここには含めない。数値としては期待値換算で常時accumに加算済みだが、
+  //   表示上は「ターン毎の内訳」側でその確率に従った乱数例を都度表示するため(v4.11)。
+  const constant = [];
+  ORDER.forEach(role => {
+    const sel = heroSelection[role];
+    if (!sel || !sel.heroKey || !heroesDb[sel.heroKey]) return;
+    const hero = heroesDb[sel.heroKey];
+    const seenTalentSkillNames = new Set();
+    (hero.buffs || []).forEach(b => {
+      addPct(accum, b.scope, b.stat, b.pct * 100);
+      log.push({ role, heroName: hero.name, kind: '才能スキル', scope: b.scope, stat: b.stat, pct: b.pct * 100, skillName: b.skillName, skillNameJa: b.skillNameJa });
+      // skillNameが分かっている場合は同じスキル名につき1エントリにまとめ、不明な場合は英雄1体につき1エントリにする。
+      const dedupeKey = b.skillName || '__unnamed_talent__';
+      if (!seenTalentSkillNames.has(dedupeKey)) {
+        seenTalentSkillNames.add(dedupeKey);
+        constant.push({ role, heroName: hero.name, kind: '才能スキル', skillName: b.skillName, skillNameJa: b.skillNameJa });
+      }
+    });
+    (hero.periodicBuffs || []).forEach(pb => {
+      periodic.push({
+        role, heroName: hero.name,
+        scope: pb.scope, stat: pb.stat, pct: pb.pct * 100,
+        cycleTurns: pb.cycleTurns, activeTurns: pb.activeTurns, skillName: pb.skillName, skillNameJa: pb.skillNameJa,
+      });
+      log.push({
+        role, heroName: hero.name,
+        kind: `周期発動スキル(${pb.cycleTurns}ターン周期中${pb.activeTurns}ターン有効、有効時)`,
+        scope: pb.scope, stat: pb.stat, pct: pb.pct * 100, skillName: pb.skillName, skillNameJa: pb.skillNameJa,
+      });
+    });
+    // 確率発動スキル(procBuffs): {scope,stat,chance(0-1),magnitude(発動時の効果量、小数),skillName}
+    // 例: ノラ「Sneak Strike」= 槍兵の攻撃時20%の確率で敵全体に(Lvに応じ最大)100%の追加ダメージ。
+    // 【v4.14で変更】v4.11〜v4.13では、勝敗・損耗数などの計算には期待値(chance×magnitude)を
+    // 常時の一定倍率としてaccumへ加算し、「ターン毎の内訳」表示だけは別途isProcActive()の乱数判定で
+    // 発動/非発動を表示する、という2階建ての実装だった。これだと表示上「発動していないターン」でも
+    // 実際の損耗数の計算には常にこの期待値が乗ったままになり、「表示と計算が一致していない
+    // (発動有無が結果の数値に何も影響しない)」という矛盾があった。v4.14では、ここではaccumに
+    // 加算せず、実際の効果はmodsForTurn()側で「そのターン実際に発動と判定された場合のみ」
+    // 満額(magnitude)を加算する形に統一した(periodicBuffsと同じ扱いに揃えた)。これにより、
+    // 発動したターンだけ実際に損耗数が変化し、表示と計算が一致するようになる。
+    // なお、同じ設定・同じ乱数シード(trialSeed)であれば発動パターンは再現されるため、通常の
+    // 単発シミュレーションは引き続き決定的(再現可能)である。実際の乱数を使った試行ごとのばらつきを
+    // 見たい場合は、runBattleMonteCarlo()(v4.14で追加)を使う。
+    (hero.procBuffs || []).forEach(pb => {
+      proc.push({ role, heroName: hero.name, scope: pb.scope, stat: pb.stat, chance: pb.chance, magnitude: pb.magnitude, skillName: pb.skillName, skillNameJa: pb.skillNameJa });
+      log.push({
+        role, heroName: hero.name,
+        kind: `確率発動スキル(${Math.round(pb.chance * 100)}%の確率で発動、発動したターンのみ効果量${(pb.magnitude * 100).toFixed(1)}%を適用。期待値は参考値)`,
+        scope: pb.scope, stat: pb.stat, pct: pb.chance * pb.magnitude * 100, skillName: pb.skillName, skillNameJa: pb.skillNameJa,
+      });
+    });
+    if (hero.enemyDebuff && enemyAccumOut) {
+      addPct(enemyAccumOut, 'all', hero.enemyDebuff.stat, hero.enemyDebuff.pct * 100);
+      log.push({ role, heroName: hero.name, kind: '敵デバフ', scope: 'all', stat: hero.enemyDebuff.stat, pct: hero.enemyDebuff.pct * 100, skillName: hero.enemyDebuff.skillName, skillNameJa: hero.enemyDebuff.skillNameJa });
+      constant.push({ role, heroName: hero.name, kind: '敵デバフ', skillName: hero.enemyDebuff.skillName, skillNameJa: hero.enemyDebuff.skillNameJa });
+    }
+    if (hero.equip && hero.equip.skill) {
+      const eqLv = Math.max(0, Math.min(5, sel.eqLv || 0));
+      const f = eqLv / 5;
+      const s = hero.equip.skill;
+      if (s.mode === mode && f > 0) {
+        const magnitude = 15 * f; // 専用装備の遠征スキルは満レベルで+15%相当
+        // 'taken'(被ダメ)方向は「軽減」が本来の効果なので符号を反転する。
+        // 以前はここが常に+側で加算されており、防衛系(stat:'taken')の遠征スキルを持つ英雄
+        // (ローガン、アクモス等7体)が、実際には被ダメが増える(逆効果になる)バグがあった。
+        const signedPct = s.stat === 'taken' ? -magnitude : magnitude;
+        addPct(accum, s.scope, s.stat, signedPct);
+        log.push({ role, heroName: hero.name, kind: `専用装備遠征スキル(Lv.${eqLv})`, scope: s.scope, stat: s.stat, pct: signedPct, skillName: s.skillName, skillNameJa: s.skillNameJa });
+        // 遠征スキルはeqLv>0かつ現在の戦闘モード(集結/駐屯)と一致する場合のみ発動する条件付きスキルなので、
+        // 「発動したスキル」欄でも才能スキルとは明確に区別して表示する(ユーザーからの「どの遠征スキルが
+        // 発動しているか分からない」という指摘への対応)。
+        constant.push({ role, heroName: hero.name, kind: '専用装備遠征スキル', skillName: s.skillName, skillNameJa: s.skillNameJa });
+      }
+    }
+    // 専用装備そのものの殺傷力/HP上昇(statPct)。以前は表示のみで計算に反映していなかったが、
+    // 専用装備レベル(0〜5)に比例する形で実際の計算に組み込む。これは「スキル」ではなく装備の素の
+    // ステータス上昇のため、「発動したスキル」欄(constant)には含めない(適用された英雄バフの内訳には表示)。
+    if (hero.equip && hero.equip.statPct) {
+      const eqLv = Math.max(0, Math.min(5, sel.eqLv || 0));
+      const f = eqLv / 5;
+      if (f > 0) {
+        const pct = hero.equip.statPct * f * 100;
+        addPct(accum, role, 'dealt', pct); // 殺傷力上昇分(近似として与ダメ側に加算)
+        addPct(accum, role, 'hp', pct);    // HP上昇分
+        log.push({ role, heroName: hero.name, kind: `専用装備ステータス(Lv.${eqLv})`, scope: role, stat: 'dealt/hp', pct });
+      }
+    }
+  });
+  // 実際の「追加ステータス」画面の数値(領主装備・ペット・専門家・戦争研究・英雄バフ等すべて込みの
+  // 合計%)を兵科ごとに直接反映する。攻撃力・殺傷力は与ダメ(dealt)側、防御力は被ダメ(taken)側
+  // (符号反転、防御up=被ダメ減のため)、HPはそのままhp側に加算する。
+  ORDER.forEach(t => {
+    const sb = (statBuff && statBuff[t]) || {};
+    addPct(accum, t, 'dealt', (sb.atk || 0) + (sb.leth || 0));
+    addPct(accum, t, 'taken', -(sb.def || 0));
+    addPct(accum, t, 'hp', sb.hp || 0);
+  });
+
+  return { accum, periodic, proc, constant, log };
+}
+
+// 周期発動スキルが、指定ターン(1始まり)で有効かどうか。
+// cycleTurnsターンを1周期とし、周期の先頭からactiveTurns分だけ有効(位相の仮定はheroes-data.jsの
+// コメントを参照。real-game上の正確な位相までは裏取りできていない)。
+function isPeriodicActive(pb, turn) {
+  if (!pb.cycleTurns) return false;
+  const phase = (turn - 1) % pb.cycleTurns;
+  return phase < pb.activeTurns;
+}
+
+// ---- 確率発動スキルの「ターン毎の内訳」表示用、疑似乱数(シード固定・再現可能) ----
+// 同じ入力(英雄・スキル・ターン数)なら常に同じ結果を返す決定的な関数にすることで、
+// 「必要兵力倍率」の二分探索や、同じ編成を再計算したときに毎回違う結果になる(=再現性が
+// なくなる)ことを避けている。実際の戦闘計算(勝敗・損耗数)にはこの乱数を一切使わない
+// (期待値換算のみで計算する。上記buildMods参照)。あくまで「ターン毎の内訳」表示欄に、
+// 実際のゲームでは発動したりしなかったりすることを視覚的に示すための一例。
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function seededRoll01(key) {
+  let seed = hashStr(key) | 0;
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+// trialSeed: 通常の単発シミュレーションでは既定値(0)で固定し、同じ編成なら常に同じ発動パターンに
+// なる(再現可能・必要兵力倍率の二分探索も安定する)。runBattleMonteCarlo()(v4.14で追加)が
+// 試行ごとに異なるtrialSeedを渡すことで、実際の乱数を使った試行間のばらつきを再現する。
+function isProcActive(pb, turn, sideTag, trialSeed) {
+  if (!pb.chance) return false;
+  const key = `${trialSeed != null ? trialSeed : 0}|${sideTag || ''}|${pb.heroName || ''}|${pb.skillName || ''}|${pb.scope}|${pb.stat}|${turn}`;
+  return seededRoll01(key) < pb.chance;
+}
+
+// baseAccum(常時分の%集計)に、指定ターンで有効な周期・確率発動スキルの%を上乗せしたものをmultiplierへ変換する。
+// 戻り値のactiveListは、そのターンに「ターン毎の内訳」表示上、変動要素として列挙すべきスキルの一覧
+// (常時発動しているスキルは別途「常時発動しているスキル」欄に1回だけ表示するため、ここには含めない。v4.11)。
+// activeListの各要素は {heroName, role, kind, skillName} 形式。
+// - kind:'periodic' のスキルは、実際にそのターンが周期の有効期間に該当する場合のみ列挙され、%もこの時点で加算する
+//   (確定的な周期。乱数ではない)。
+// - kind:'proc' のスキルは、確率発動スキルの実際のchance(%)に従った疑似乱数判定(isProcActive)の結果、
+//   そのターンに「発動した」と判定された場合のみ列挙され、【v4.14で変更】このときのみ実際にmagnitude(満額)を
+//   accumへ加算する(以前は表示のみで、期待値がbuildMods側で常時加算されていたため、表示と計算が
+//   一致しない矛盾があった。この矛盾を解消するための変更)。
+function modsForTurn(side, turn, sideTag, trialSeed) {
+  const accum = freshModAccum();
+  ORDER.concat('all').forEach(scope => {
+    ['dealt', 'taken', 'hp'].forEach(stat => { accum[scope][stat] = side.accum[scope][stat]; });
+  });
+  const activeList = [];
+  const seenPeriodicSkills = new Set();
+  (side.periodic || []).forEach(pb => {
+    if (isPeriodicActive(pb, turn)) {
+      addPct(accum, pb.scope, pb.stat, pb.pct);
+      // 同一スキル(例:ノラ「Momentum」)がdealt/takenの2つのbuff行に分かれている場合、
+      // 表示上は1エントリにまとめる。
+      const dedupeKey = pb.heroName + '|' + (pb.skillName || '__unnamed_periodic__');
+      if (!seenPeriodicSkills.has(dedupeKey)) {
+        seenPeriodicSkills.add(dedupeKey);
+        activeList.push({ heroName: pb.heroName, role: pb.role, kind: 'periodic', skillName: pb.skillName, skillNameJa: pb.skillNameJa, cycleTurns: pb.cycleTurns, activeTurns: pb.activeTurns });
+      }
+    }
+  });
+  const seenProcSkills = new Set();
+  (side.proc || []).forEach(pb => {
+    if (isProcActive(pb, turn, sideTag, trialSeed)) {
+      // 【v4.14】発動したと判定されたターンのみ、期待値ではなく実際の効果量(magnitude、満額)を加算する。
+      addPct(accum, pb.scope, pb.stat, pb.magnitude * 100);
+      const dedupeKey = pb.heroName + '|' + (pb.skillName || '__unnamed_proc__');
+      if (!seenProcSkills.has(dedupeKey)) {
+        seenProcSkills.add(dedupeKey);
+        activeList.push({ heroName: pb.heroName, role: pb.role, kind: 'proc', skillName: pb.skillName, skillNameJa: pb.skillNameJa, chance: pb.chance });
+      }
+    }
+  });
+  return { mods: toMultiplier(accum), activeList };
+}
+
+// ---- 1回の攻撃(攻撃側1兵科 → 防御側1兵科)のダメージ ----
+// dmg = 攻撃力 × 殺傷力/(殺傷力+防御力) を基本とし、各種倍率を乗算する。
+function unitDamage(attackerType, aStat, defenderType, dStat, aFC, dFC, aMods, dMods, mech, scale) {
+  let def = dStat.def;
+  if (defenderType === 'shield' && attackerType === 'spear') def *= (1 + mech.bandsOfSteel);
+  if (defenderType === 'shield') def *= (1 + fcSkill('shield', dFC).defBonus);
+
+  let dmg = aStat.atk * (aStat.leth / (aStat.leth + def));
+  if (COUNTER[attackerType] === defenderType) dmg *= (1 + mech.counterBonus);
+  if (attackerType === 'archer') dmg *= (1 + mech.volleyMult);
+
+  dmg *= fcSkill(attackerType, aFC).dealt;
+  dmg *= fcSkill(defenderType, dFC).taken;
+
+  dmg *= aMods.all.dealt * aMods[attackerType].dealt;
+  dmg *= dMods.all.taken * dMods[defenderType].taken;
+
+  return dmg * (scale === undefined ? 1 : scale);
+}
+
+function effectiveHpPerUnit(type, stat, mods, replenishBonus) {
+  return stat.hp * mods.all.hp * mods[type].hp * (1 + (type === 'shield' ? (replenishBonus || 0) : 0));
+}
+
+// baseline = { lv:{shield,spear,archer}, fc } (兵科ごとのTier/火晶レベル。通常は共通値でOK)
+function calibrateScale(attackerBaseline, defenderBaseline, targetTurns, mech) {
+  const neutralMods = toMultiplier(freshModAccum());
+  let total = 0, n = 0;
+  for (const at of ORDER) {
+    for (const tt of ORDER) {
+      const aStat = troopStats(at, attackerBaseline.lv[at], attackerBaseline.fc);
+      const dStat = troopStats(tt, defenderBaseline.lv[tt], defenderBaseline.fc);
+      total += unitDamage(at, aStat, tt, dStat, attackerBaseline.fc, defenderBaseline.fc, neutralMods, neutralMods, mech, 1);
+      n++;
+    }
+  }
+  const avgDamage = total / n;
+  const avgHp = ORDER.reduce((s, t) => s + troopStats(t, defenderBaseline.lv[t], defenderBaseline.fc).hp, 0) / 3;
+  return avgDamage > 0 ? avgHp / (avgDamage * Math.max(1, targetTurns)) : 1;
+}
+
+/**
+ * side config = {
+ *   lv: {shield,spear,archer}, fc: {shield,spear,archer} (v4.7〜兵科ごとに個別。後方互換のため
+ *       単一のnumberが渡された場合は3兵科とも同じ値として扱う),
+ *   counts: {shield,spear,archer},
+ *   heroes: { shield:{heroKey,eqLv}, spear:{...}, archer:{...} },
+ *   mode: 'attack' | 'defense',
+ *   statBuff: { shield:{atk,def,leth,hp}, spear:{...}, archer:{...} }
+ *             (実際のゲーム内「追加ステータス」画面の合計%を兵科ごとにそのまま入力したもの、任意),
+ *   wallMitigationPercent (defenderのみ想定, 任意)
+ *   shieldReplenishBonus (defenderのみ想定, 駐屯の盾兵優先補充を簡易再現。既定0.20)
+ * }
+ */
+function prepareSide(config, heroesDb, enemyAccumOut) {
+  const stats = {};
+  // fcは兵科ごとに個別の値を受け取る({shield,spear,archer})。後方互換のため、単一の数値が
+  // 渡された場合は3兵科とも同じ値として扱う。
+  const fcByType = (config.fc && typeof config.fc === 'object')
+    ? config.fc
+    : { shield: config.fc, spear: config.fc, archer: config.fc };
+  ORDER.forEach(t => { stats[t] = troopStats(t, config.lv[t], fcByType[t]); });
+  const { accum, periodic, proc, constant, log } = buildMods(config.heroes, heroesDb, config.mode, config.statBuff || {}, enemyAccumOut);
+  // HPプール(兵力の耐久量)は周期・確率発動スキルの影響を受けない前提(現状、periodicBuffs/procBuffsで
+  // hpを対象にした英雄は存在しない)なので、常時分(accum)のみのmultiplierで計算する。
+  const baseMods = toMultiplier(accum);
+  const hp = {};
+  ORDER.forEach(t => {
+    const perUnit = effectiveHpPerUnit(t, stats[t], baseMods, config.shieldReplenishBonus || 0);
+    hp[t] = { perUnit, pool: perUnit * (config.counts[t] || 0), initialCount: config.counts[t] || 0 };
+  });
+  return { stats, accum, periodic, proc, constant, log, hp, fc: fcByType, wallMitigationPercent: config.wallMitigationPercent || 0 };
+}
+
+function frontType(hpState) {
+  for (const t of ORDER) if (hpState[t].pool > 1e-6) return t;
+  return null;
+}
+
+function totalPool(hpState) {
+  return ORDER.reduce((s, t) => s + Math.max(0, hpState[t].pool), 0);
+}
+
+function runBattle(attackerConfig, defenderConfig, heroesDb, opts) {
+  const mech = Object.assign({}, DEFAULT_MECH, opts.mech || {});
+  const maxTurns = opts.maxTurns || 60;
+  // trialSeed(v4.14): 確率発動スキルの発動判定に使う乱数シード。既定は0で、同じ編成なら常に同じ
+  // 発動パターン・同じ結果になる(通常の単発シミュレーション・必要兵力倍率の逆算はこの既定値で動作する)。
+  // runBattleMonteCarlo()は、試行ごとに異なる値を渡すことで実際の乱数を使ったばらつきを再現する。
+  const trialSeed = opts.trialSeed != null ? opts.trialSeed : 0;
+
+  const enemyDebuffAccumOnDefender = freshModAccum(); // 攻撃側の英雄が相手(defender)に与えるデバフ
+  const enemyDebuffAccumOnAttacker = freshModAccum(); // 防御側の英雄が相手(attacker)に与えるデバフ
+
+  const A = prepareSide(attackerConfig, heroesDb, enemyDebuffAccumOnDefender);
+  const D = prepareSide(defenderConfig, heroesDb, enemyDebuffAccumOnAttacker);
+
+  // 敵デバフ(英雄のenemyDebuff、および追加バフ源の敵デバフ分)を反映。
+  // 注意: 以前はここが `.all.taken` だけを読み、しかもORDER.forEach内で無関係に3回掛けてしまう
+  // バグがあった(enemyDebuff.stat='dealt'の英雄は一切反映されず、万一.takenを使うと3乗されて
+  // 過大評価される状態だった)。dealt/taken/hpのいずれで宣言されても1回だけ正しく反映するよう修正。
+  const dDebuffMult = toMultiplier(enemyDebuffAccumOnDefender);
+  const aDebuffMult = toMultiplier(enemyDebuffAccumOnAttacker);
+  // 敵デバフは周期スキルの対象になる英雄がいないため、ターンごとに再計算されるmods(下記modsForTurn)
+  // に対して、毎ターン共通の乗算レイヤーとしてそのつど掛け合わせる。
+
+  const scale = opts.scale != null ? opts.scale : 1;
+
+  const lossesA = { shield: 0, spear: 0, archer: 0 };
+  const lossesD = { shield: 0, spear: 0, archer: 0 };
+  const history = [];
+
+  let turn = 0;
+  let winner = 'undecided';
+  const initTotalA = totalPool(A.hp);
+  const initTotalD = totalPool(D.hp);
+  if (initTotalA <= 0 && initTotalD <= 0) winner = 'draw';
+  else if (initTotalA <= 0) winner = 'defender';
+  else if (initTotalD <= 0) winner = 'attacker';
+
+  while (winner === 'undecided' && turn < maxTurns) {
+    turn++;
+    // ターン開始時点のスナップショットを両軍分とっておき、以降の狙い先・生死判定は
+    // すべてこのスナップショットを基準にする(「両軍同時に攻撃」を厳密にシミュレートするため。
+    // 片方の攻撃結果を先に反映してからもう片方の反撃を計算すると、後攻側が不当に不利になる)。
+    const fA0 = frontType(A.hp);
+    const fD0 = frontType(D.hp);
+    if (!fA0 || !fD0) break;
+    const aliveA0 = {}, aliveD0 = {};
+    ORDER.forEach(t => { aliveA0[t] = A.hp[t].pool > 1e-6; aliveD0[t] = D.hp[t].pool > 1e-6; });
+
+    // このターンで実際に有効な周期・確率発動スキルを反映したmodsを都度計算し、敵デバフの乗算も合成する。
+    const { mods: aModsTurn, activeList: aActiveSkills } = modsForTurn(A, turn, 'attacker', trialSeed);
+    const { mods: dModsTurn, activeList: dActiveSkills } = modsForTurn(D, turn, 'defender', trialSeed);
+    ['dealt', 'taken', 'hp'].forEach(stat => {
+      dModsTurn.all[stat] *= dDebuffMult.all[stat];
+      aModsTurn.all[stat] *= aDebuffMult.all[stat];
+    });
+
+    // このターンの各兵科の現存数(ターン開始時点の残りHPプールから逆算)に応じたダメージを計算
+    const curCountsA = {}, curCountsD = {};
+    ORDER.forEach(t => {
+      curCountsA[t] = A.hp[t].perUnit > 0 ? A.hp[t].pool / A.hp[t].perUnit : 0;
+      curCountsD[t] = D.hp[t].perUnit > 0 ? D.hp[t].pool / D.hp[t].perUnit : 0;
+    });
+    const dmgAtoD = {};
+    const dmgDtoA = {};
+    ORDER.forEach(at => {
+      const effCountA = effectiveCountForDamage(curCountsA, at, mech.countScalingExponent);
+      dmgAtoD[at] = {};
+      ORDER.forEach(tt => {
+        // fcSkill(攻撃側の兵科, 攻撃側のその兵科の火晶Lv) / fcSkill(防御側の兵科, 防御側のその兵科の火晶Lv)
+        // となるよう、それぞれの兵科自身の火晶レベルを渡す(v4.7で兵科ごとの火晶レベルに対応)。
+        dmgAtoD[at][tt] = effCountA * unitDamage(at, A.stats[at], tt, D.stats[tt], A.fc[at], D.fc[tt], aModsTurn, dModsTurn, mech, scale);
+      });
+      const effCountD = effectiveCountForDamage(curCountsD, at, mech.countScalingExponent);
+      dmgDtoA[at] = {};
+      ORDER.forEach(tt => {
+        dmgDtoA[at][tt] = effCountD * unitDamage(at, D.stats[at], tt, A.stats[tt], D.fc[at], A.fc[tt], dModsTurn, aModsTurn, mech, scale);
+      });
+    });
+    if (D.wallMitigationPercent) {
+      ORDER.forEach(at => ORDER.forEach(tt => { dmgAtoD[at][tt] *= (1 - D.wallMitigationPercent / 100); }));
+    }
+    if (A.wallMitigationPercent) {
+      ORDER.forEach(at => ORDER.forEach(tt => { dmgDtoA[at][tt] *= (1 - A.wallMitigationPercent / 100); }));
+    }
+
+    // ターン開始時点のスナップショット(alive0/front0)を使って、狙い先とダメージ量(delta)を先に確定させる。
+    // pool自体はまだ一切変更しない(=完全な同時解決)。
+    function computeDeltas(aliveAttacker0, dmgTable, defenderFront0, defenderArcherAlive0) {
+      const delta = { shield: 0, spear: 0, archer: 0 };
+      ORDER.forEach(at => {
+        if (!aliveAttacker0[at]) return;
+        if (!defenderFront0) return;
+        if (at === 'spear' && defenderArcherAlive0 && defenderFront0 !== 'archer') {
+          delta.archer += dmgTable[at].archer * mech.ambushRate;
+          delta[defenderFront0] += dmgTable[at][defenderFront0] * (1 - mech.ambushRate);
+        } else {
+          delta[defenderFront0] += dmgTable[at][defenderFront0];
+        }
+      });
+      return delta;
+    }
+
+    const deltaToD = computeDeltas(aliveA0, dmgAtoD, fD0, aliveD0.archer);
+    const deltaToA = computeDeltas(aliveD0, dmgDtoA, fA0, aliveA0.archer);
+
+    const poolBeforeD = {}, poolBeforeA = {};
+    ORDER.forEach(t => { poolBeforeD[t] = D.hp[t].pool; poolBeforeA[t] = A.hp[t].pool; });
+
+    ORDER.forEach(t => {
+      D.hp[t].pool = Math.max(0, D.hp[t].pool - deltaToD[t]);
+      A.hp[t].pool = Math.max(0, A.hp[t].pool - deltaToA[t]);
+    });
+
+    // このターンの損耗数(=相手側から見たキル数)を、消費されたHPプールから兵数換算で算出する。
+    const attackerLossesThisTurn = { shield: 0, spear: 0, archer: 0 };
+    const defenderLossesThisTurn = { shield: 0, spear: 0, archer: 0 };
+    ORDER.forEach(t => {
+      attackerLossesThisTurn[t] = A.hp[t].perUnit > 0 ? (poolBeforeA[t] - A.hp[t].pool) / A.hp[t].perUnit : 0;
+      defenderLossesThisTurn[t] = D.hp[t].perUnit > 0 ? (poolBeforeD[t] - D.hp[t].pool) / D.hp[t].perUnit : 0;
+    });
+
+    history.push({
+      turn,
+      attackerTotal: totalPool(A.hp),
+      defenderTotal: totalPool(D.hp),
+      // attackerLosses = 攻撃側自身がこのターンに失った兵数(=防御側からみたキル数)
+      // defenderLosses = 防御側自身がこのターンに失った兵数(=攻撃側からみたキル数)
+      attackerLosses: attackerLossesThisTurn,
+      defenderLosses: defenderLossesThisTurn,
+      // attackerActiveSkills/defenderActiveSkills = このターン「発動した」と表示すべき、変動要素のスキル一覧
+      // (周期発動スキル=確定的な周期条件、確率発動スキル=実際のchance%に従った疑似乱数の一例。
+      // 常時発動しているスキル(才能スキル・専用装備遠征スキル・敵デバフ)はsideConstants側に1回だけ記載)
+      attackerActiveSkills: aActiveSkills,
+      defenderActiveSkills: dActiveSkills,
+    });
+
+    const totA = totalPool(A.hp);
+    const totD = totalPool(D.hp);
+    if (totA <= 0 && totD <= 0) { winner = 'draw'; break; }
+    if (totD <= 0) { winner = 'attacker'; break; }
+    if (totA <= 0) { winner = 'defender'; break; }
+  }
+
+  ORDER.forEach(t => {
+    const remainA = A.hp[t].perUnit > 0 ? A.hp[t].pool / A.hp[t].perUnit : 0;
+    const remainD = D.hp[t].perUnit > 0 ? D.hp[t].pool / D.hp[t].perUnit : 0;
+    lossesA[t] = Math.max(0, A.hp[t].initialCount - remainA);
+    lossesD[t] = Math.max(0, D.hp[t].initialCount - remainD);
+  });
+
+  const remaining = {
+    attacker: {
+      shield: A.hp.shield.perUnit > 0 ? A.hp.shield.pool / A.hp.shield.perUnit : 0,
+      spear: A.hp.spear.perUnit > 0 ? A.hp.spear.pool / A.hp.spear.perUnit : 0,
+      archer: A.hp.archer.perUnit > 0 ? A.hp.archer.pool / A.hp.archer.perUnit : 0,
+    },
+    defender: {
+      shield: D.hp.shield.perUnit > 0 ? D.hp.shield.pool / D.hp.shield.perUnit : 0,
+      spear: D.hp.spear.perUnit > 0 ? D.hp.spear.pool / D.hp.spear.perUnit : 0,
+      archer: D.hp.archer.perUnit > 0 ? D.hp.archer.pool / D.hp.archer.perUnit : 0,
+    },
+  };
+
+  return {
+    winner, endedAtTurn: turn,
+    history, losses: { attacker: lossesA, defender: lossesD }, remaining,
+    heroLogs: { attacker: A.log, defender: D.log },
+    // sideConstants: 常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)の一覧。
+    // ターンによって変わらないため、「ターン毎の内訳」表とは別に1回だけ表示するために追加(v4.11)。
+    sideConstants: { attacker: A.constant, defender: D.constant },
+  };
+}
+
+// 【v4.14で追加】「同じ設定なら毎回同じ結果になるのはおかしい、確率スキルがあるなら結果もばらつく
+// はずだ」というご指摘への対応。通常のrunBattle()は、必要兵力倍率の逆算(二分探索)や再現性の
+// ために意図的に決定的(trialSeed固定)にしているが、これとは別に「実際の乱数を使って何度も
+// 戦闘を試行し、勝率・損耗数のばらつきを統計的に確認する」ための関数を新設した。
+// baseSeedを毎回変えて呼び出すことで(例: 呼び出し側でMath.random()等から生成)、試行するたびに
+// 異なる乱数列を使った複数戦闘のサンプルが得られる。
+// 戻り値: { trials, winRate:{attacker,defender,undecidedOrDraw}, attackerLossStats, defenderLossStats }
+// (各lossStatsは兵科ごとに{avg,min,max}を持つ)
+function runBattleMonteCarlo(attackerConfig, defenderConfig, heroesDb, opts, trials, baseSeed) {
+  const n = Math.max(1, trials || 200);
+  const base = baseSeed != null ? baseSeed : 0;
+  const results = [];
+  for (let i = 0; i < n; i++) {
+    const trialOpts = Object.assign({}, opts, { trialSeed: `${base}_${i}` });
+    results.push(runBattle(attackerConfig, defenderConfig, heroesDb, trialOpts));
+  }
+  const winAttacker = results.filter(r => r.winner === 'attacker').length;
+  const winDefender = results.filter(r => r.winner === 'defender').length;
+  const undecidedOrDraw = n - winAttacker - winDefender;
+  function statsFor(sideKey, type) {
+    const vals = results.map(r => r.losses[sideKey][type]);
+    const sum = vals.reduce((a, b) => a + b, 0);
+    return { avg: sum / n, min: Math.min(...vals), max: Math.max(...vals) };
+  }
+  const attackerLossStats = {}, defenderLossStats = {};
+  ORDER.forEach(t => {
+    attackerLossStats[t] = statsFor('attacker', t);
+    defenderLossStats[t] = statsFor('defender', t);
+  });
+  const endedAtTurns = results.map(r => r.endedAtTurn);
+  return {
+    trials: n,
+    winRate: { attacker: winAttacker / n, defender: winDefender / n, undecidedOrDraw: undecidedOrDraw / n },
+    attackerLossStats, defenderLossStats,
+    endedAtTurnStats: { avg: endedAtTurns.reduce((a, b) => a + b, 0) / n, min: Math.min(...endedAtTurns), max: Math.max(...endedAtTurns) },
+  };
+}
+
+function findRequiredMultiplier(attackerConfig, defenderConfig, heroesDb, opts, searchOpts) {
+  const { minM = 0.1, maxM = 10, iterations = 22 } = searchOpts || {};
+  function scaled(m) {
+    const c = JSON.parse(JSON.stringify(attackerConfig));
+    ORDER.forEach(t => { c.counts[t] = (c.counts[t] || 0) * m; });
+    return c;
+  }
+  function wins(m) {
+    return runBattle(scaled(m), defenderConfig, heroesDb, opts).winner === 'attacker';
+  }
+  if (!wins(maxM)) return { found: false, message: `倍率${maxM}倍でも勝利条件を満たしませんでした。` };
+  if (wins(minM)) return { found: true, multiplier: minM };
+  let lo = minM, hi = maxM;
+  for (let i = 0; i < iterations; i++) {
+    const mid = (lo + hi) / 2;
+    if (wins(mid)) hi = mid; else lo = mid;
+  }
+  return { found: true, multiplier: hi };
+}
+
+const SimCoreExports = { ORDER, TYPE_LABEL_JA, COUNTER, DEFAULT_MECH, FC_STATS, troopStats, fcSkill, buildMods, unitDamage, effectiveHpPerUnit, effectiveCountForDamage, calibrateScale, runBattle, runBattleMonteCarlo, findRequiredMultiplier, freshModAccum, toMultiplier, isPeriodicActive, isProcActive, modsForTurn };
+if (typeof window !== 'undefined') window.SimCore = SimCoreExports;
+if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExports;
+
+</script>
+
+<script>
+(function () {
+  const ORDER = SimCore.ORDER; // ['shield','spear','archer']
+  const TYPE_LABEL = { shield: '盾兵', spear: '槍兵', archer: '弓兵' };
+
+  // 【v4.17】「説明文などは不要、informationマークをクリックしたらモーダルで出る程度でいい」との
+  // ご指摘に対応。従来は画面に常時表示していた前提条件・注記のたぐいを、すべてここに集約し、
+  // 見出し等の隣にある「i」アイコンをクリックしたときだけモーダルで表示する形にした
+  // (setupInfoModal参照。アイコンは静的にshell.htmlへ置いたものと、結果カード内で動的に
+  // 生成するものの両方に対応するため、イベント委譲[document側で.info-iconクリックを拾う]方式にしている)。
+  const INFO_CONTENTS = {
+    premise: {
+      title: '前提条件(必ずお読みください)',
+      html: `<ul>
+        <li>陣形(盾兵=前列/槍兵=中列/弓兵=後列)・ターン制同時攻撃・槍兵の弓兵奇襲・駐屯補充順(盾→槍→弓)は、公式Combat FAQの内容に沿っています。</li>
+        <li>兵種基礎ステータス(T10/T11×火晶Lv0〜10)は、wostools.net/wiki/troops/掲載の公式Fire Crystal Troop Statsに基づく値です。</li>
+        <li>兵種相性(盾→槍→弓→盾、各+10%)は、公式ガイド「槍兵は歩兵への与ダメージ-10%」および同盟内の解説資料「弓が盾を削り、槍が弓を削る」の両方と整合する形にしています。</li>
+        <li>盾兵「鋼の帯」(槍兵に対する防御+10%)・槍兵「奇襲」(攻撃の20%が後列弓兵に直撃)・弓兵「連射」(10%の確率で2回攻撃→期待値換算で与ダメ+10%)は、いずれもT7で解放される兵科固有スキルで、wostools.net/wiki/troops/の各兵科ページに記載の数値と一致確認済みです。このツールはTier T10.0〜T11.0のみ対応しており、T7より常に上のため、これら3つは入力を求めず内部で常時有効な固定値として計算しています。</li>
+        <li>英雄データ(才能スキル・専用装備・遠征スキル)は、個々の英雄の数値まで独立に裏取りはできていません。実際の効果と違う場合は編集してご利用ください。専用装備そのものの殺傷力/HP上昇(statPct)は、専用装備レベルに比例する形で計算に反映しています。</li>
+        <li>発動条件付きの英雄スキルは2種類に分けて扱っています。①「n回攻撃ごとにmターン持続」のような確定的な周期発動スキルは、実際にどのターンで有効/無効かをそのままシミュレーションします。②「〇%の確率で発動」のような確率発動型スキルは、①と同様に「そのターン実際に発動したかどうか」を都度の乱数判定で決め、発動したターンだけ実際の効果量(満額)を戦闘計算に反映します。この乱数は「シミュレーション実行」「必要兵力倍率を逆算」ボタンを押すたびに新しく引き直すため、同じ設定でも実行するたびに結果が変わります(実際のプレイと同じように、毎回の巡り合わせで結果がばらつきます)。ただし1回のボタンクリックの中では、パターンA・Bの比較や必要兵力倍率の二分探索はすべて同じ乱数の巡り合わせで行うため、公平な比較・安定した収束が保たれます。</li>
+        <li>各軍設定の「通常のバフ」欄は、ゲーム内の英雄比較画面にある「追加ステータス」(領主装備・専門家・戦争研究・ペットのベースバフ・英雄バフ等すべて込みの兵科別合計%)を、そのまま入力する欄です。ペットを「有効化」した場合のみ乗る個別追加効果(ペットごとに内容が異なるもの)は対象外としています。</li>
+        <li>ダメージ計算式(攻撃力×殺傷力/(殺傷力+防御力))自体は公式の正確な計算式が非公開であることを踏まえた近似式で、実際のゲーム内の戦闘ログ・戦闘メール画面には「ターン数」という概念自体が存在しないため、「ターン」は本ツール内部だけの計算用の刻みです。全体のダメージ倍率は、同格・同兵力どうしの戦闘を想定した内部の基準値から自動算出しており、この基準値は「最大ターン数(安全装置)」を十分な大きさにしておけば、勝敗・残存兵力・必要兵力倍率などの結果には影響しません。</li>
+        <li>ターンが経過するにつれて兵科ごとの現存数に応じてダメージが減衰していく処理や、両軍同時解決の具体的な実装は本ツール独自の実装です。</li>
+        <li>Tier・火晶レベルは、兵科(盾兵/槍兵/弓兵)ごとに個別のスライダーで設定します。</li>
+        <li>「2つの編成を見比べる(ABテスト)」にチェックを入れた場合のみ、比較用の2つ目の編成(パターンB)の入力欄・タブが表示され、シミュレーション・比較の対象になります。未チェックの場合は1つの編成のみでシミュレーションします。</li>
+        <li>数値・仕様は目安です。実際の拠点争奪戦(砦・王城・ステーション・要塞など)の結果を記録し、必要に応じて相性%やスキル数値を調整していくことをおすすめします。</li>
+      </ul>`,
+    },
+    'scaling-exponent': {
+      title: '兵力数の寄与について',
+      html: `<p>「ダメージは兵力数の平方根に応じて増える(少ない兵科を増やす方が1体あたりの貢献度が高い)」という考え方を常に採用しています(以前は「1.0=比例/0.5=平方根」という切り替え式でしたが、平方根モデル固定のご要望を受け、入力欄自体を削除しました)。兵科ごとの比率が均等なとき(1:1:1)は、この考え方を入れても入れなくても結果は変わりません。</p>`,
+    },
+    'monte-carlo': {
+      title: '「実際の乱数で複数回試行」について',
+      html: `<p>上の「シミュレーション実行」「必要兵力倍率を逆算」は、押すたびに新しい乱数を使うため、毎回1回分の「巡り合わせ」に基づく結果が出ます(実際のプレイの1戦と同じ位置づけです)。</p>
+      <p>この「実際の乱数で複数回試行」は、同じ設定でN回戦闘をまとめて繰り返し、勝率や損耗数が平均的にどれくらいの範囲に収まるのか(最小〜最大の幅)を統計的に確認するための機能です。1回の結果だけでなく、傾向・安定性を見たい場合にお使いください。「攻撃側勝利%」等は自軍から見た表記です(自軍が防衛側の場合は読み替え済み)。ボタンを押すたびに新しい乱数サンプルを引くため、同じ設定でもう一度実行すると数値は多少変わります(それ自体が「実際にはどれくらいばらつくか」を示す情報です)。試行回数を増やすほど、勝率・平均値の推定はより安定します。</p>`,
+    },
+    'constant-skills': {
+      title: '「常時発動しているスキル」欄について',
+      html: `<p>才能スキル(英雄の常時バフ)、専用装備遠征スキル(専用装備Lvが1以上かつ現在の戦闘モード[集結/駐屯]と一致する場合のみ発動)、敵デバフ(自軍英雄が敵軍に与える常時デバフ)は、戦闘中ずっと同じ内容のためここに1回だけ表示しています。スキル名(固有名詞)は、実際の名称が確認できた英雄についてのみ和名/英語名を併記しており、それ以外はスキル種別のみの表示になります(未確認の名称を推測で記載することはしていません)。各スキルの具体的な数値は「適用された英雄バフの内訳」を参照してください。</p>`,
+    },
+    'timeline-legend': {
+      title: 'スキル発動タイムラインの見方',
+      html: `<p>緑色のセルは常時発動スキル(才能スキル・専用装備遠征スキル・敵デバフ。選択・条件を満たしている間は戦闘開始から終了まで一貫して発動し続けるため全ターン埋まります)、青色のセルは周期発動スキル(n回攻撃ごとにmターン持続する確定的な周期。実際にそのターンが有効期間に該当する場合のみ発動)、オレンジ色のセルは確率発動スキル(実際のゲーム内の確率に従って、そのターンに発動したかどうかを疑似乱数で判定したもの)です。</p>
+      <p>発動したターンは実際にその効果量(満額)が損耗数などの計算にも反映されます(表示だけでなく計算結果も連動します)。この確率発動スキルの発動パターンは「シミュレーション実行」ボタンを押すたびに新しい乱数を引くため、同じ設定でもう一度実行すると内容が変わります。ただし1回の実行内では、パターンA・Bどちらも同じ乱数を使って公平に比較します。試行を重ねた統計的な傾向を見たい場合は、下部の「実際の乱数で複数回試行」機能をお使いください。</p>`,
+    },
+    'fc-skills': {
+      title: '火晶レベルによる兵科スキルについて',
+      html: `<p>兵科(盾兵/槍兵/弓兵)ごとに、火晶レベル(0〜10)がLv3・5・8・10の閾値に達するたびに段階的に発動する固有スキルを計算に反映しています。例: 槍兵はLv3で「結晶槍」(確率発動を期待値換算し、常時の与ダメ上昇として反映)、Lv8以降さらに「白熱フィールド」(被ダメ軽減)が加わります。弓兵はLv3で「結晶火薬」、Lv8以降「焔の装填」。盾兵はLv3で「結晶シールド」、Lv8以降「光の体」。いずれも上のスライダーで設定した火晶レベルに応じて、下の一覧がリアルタイムに切り替わります。これは、盾兵「鋼の帯」・槍兵「奇襲」・弓兵「連射」(Tier7到達で常時発動する兵科スキル、前提条件欄を参照)とは別枠の仕組みです。</p>
+      <p><strong>裏取りについての注記</strong>: 兵科の基礎ステータス(攻撃力/防御力/HP/殺傷力)はwostools.net掲載の公式Fire Crystal Troop Statsで確認済みですが、この火晶スキル自体の効果量・発動条件は、以前の別セッションでClaudeが作成した参考ツールの設計を踏襲したもので、独立した一次情報源での裏取りはまだできていません(コード上、盾兵の「結晶シールド」は「他兵種との釣り合いから推定」と明記しています)。実際の数値と異なる場合はご指摘ください。</p>`,
+    },
+    'shield-replenish': {
+      title: '駐屯 盾兵優先補充ボーナスについて',
+      html: `<p>拠点(砦・王城・ステーション・要塞など)での駐屯(防衛)戦では、戦闘中に減った兵力が後方の予備兵から自動的に補充されますが、この補充は盾兵から優先的に行われます(盾→槍→弓の順)。この優先順位自体は、公式Combat FAQの内容と一致することを確認済みです(前提条件欄参照)。</p>
+      <p>本ツールは、この「盾兵が優先的に補充され続ける」という挙動を、補充のキュー(何ターン目に何人補充される、といった詳細)としてそのまま再現するのではなく、簡易的に「盾兵の実効HPが常に+α%されているのと同じ効果」という近似(<code>effectiveHpPerUnit()</code>内で、駐屯側のみ盾兵のHPに(1+補充ボーナス)を掛ける)で代替しています。攻撃(集結)側には適用されません。</p>
+      <p><strong>裏取りについての注記</strong>: 「盾兵優先で補充される」という順序・方向性は公式Combat FAQで確認済みですが、それを実効HP+20%という具体的な数値に近似する換算そのものは、以前の別セッションでClaudeが作成した参考ツールの設計を踏襲した値で、独立した一次情報源での裏取りはできていません。実際の補充スピード・戦況次第で効果の大きさは変わりうるため、20%という数値は「それらしい目安」程度のものとご理解ください。この欄は数値を直接編集できるので、実際の戦闘ログと照らして体感に近い値に調整いただくか、0にして完全に無効化することも可能です。</p>`,
+    },
+  };
+  function setupInfoModal() {
+    const overlay = document.getElementById('info-modal-overlay');
+    const titleEl = document.getElementById('info-modal-title');
+    const bodyEl = document.getElementById('info-modal-body');
+    if (!overlay) return;
+    function openInfo(key) {
+      const info = INFO_CONTENTS[key];
+      if (!info) return;
+      titleEl.textContent = info.title;
+      bodyEl.innerHTML = info.html;
+      overlay.classList.add('open');
+    }
+    function closeInfo() { overlay.classList.remove('open'); }
+    document.addEventListener('click', (ev) => {
+      const iconBtn = ev.target.closest('.info-icon');
+      if (iconBtn) { openInfo(iconBtn.getAttribute('data-info')); return; }
+      if (ev.target.id === 'info-modal-close') { closeInfo(); return; }
+      if (ev.target === overlay) { closeInfo(); return; }
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') closeInfo();
+    });
+  }
+
+  function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'text') e.textContent = attrs[k];
+      else if (k === 'html') e.innerHTML = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (children || []).forEach(c => e.appendChild(c));
+    return e;
+  }
+  function getNum(id, def) {
+    const e = document.getElementById(id);
+    if (!e) return def || 0;
+    const v = parseFloat(e.value);
+    return isNaN(v) ? (def || 0) : v;
+  }
+  function getVal(id, def) {
+    const e = document.getElementById(id);
+    return e ? e.value : def;
+  }
+
+  // ---------------- 対戦シナリオ ----------------
+  // 'self-attack'  : 自軍=集結(攻撃) / 敵=駐屯(防衛)  ※既定
+  // 'self-defense' : 自軍=駐屯(防衛) / 敵=集結(攻撃)
+  function getScenario() { return getVal('scenario', 'self-attack'); }
+  function selfMode() { return getScenario() === 'self-defense' ? 'defense' : 'attack'; }
+  function enemyMode() { return getScenario() === 'self-defense' ? 'attack' : 'defense'; }
+
+  // heroes grouped by role for the dropdowns
+  const HEROES_BY_ROLE = { shield: [], spear: [], archer: [] };
+  Object.keys(HEROES).forEach(key => {
+    const h = HEROES[key];
+    if (HEROES_BY_ROLE[h.role]) HEROES_BY_ROLE[h.role].push({ key, name: h.name });
+  });
+
+  // ---------------- 通常のバフ(実際の「追加ステータス」画面の数値をそのまま入力) ----------------
+  // ゲーム内の英雄比較画面にある「追加ステータス」(兵科ごとの攻撃力/防御力/殺傷力/HP、領主装備・
+  // 英雄・専門家・戦争研究・ペットのベースバフ等すべて込みの合計%)を、そのまま入力してもらう欄。
+  // ペットを「有効化」した場合にのみ乗る個別追加効果(ペットごとに内容が異なる)は対象外(考慮しない)。
+  const STAT_BUFF_FIELDS = [
+    { key: 'atk', label: '攻撃力+%' },
+    { key: 'def', label: '防御力+%' },
+    { key: 'leth', label: '殺傷力+%' },
+    { key: 'hp', label: 'HP+%' },
+  ];
+
+  function buildStatBuffTable(prefix) {
+    const wrap = el('div', { style: 'margin:14px 0;' });
+    wrap.appendChild(el('div', { text: '通常のバフ(追加ステータス画面の数値をそのまま入力)', style: 'font-weight:600;margin-bottom:4px;' }));
+    wrap.appendChild(el('p', {
+      class: 'sub',
+      text: '英雄詳細の「追加ステータス」比較画面に表示される、兵科ごとの合計%をそのまま入力してください(領主装備・専門家・戦争研究・ペットのベースバフ等すべて込みの数値)。ペットを有効化した場合のみ乗る個別追加効果は含めなくてOKです。',
+      style: 'margin:0 0 8px 0;',
+    }));
+    const table = el('table', { class: 'stat-table', style: 'font-size:12px;' });
+    const thead = el('thead');
+    const headRow = el('tr');
+    headRow.appendChild(el('th', { text: '兵科' }));
+    STAT_BUFF_FIELDS.forEach(f => headRow.appendChild(el('th', { text: f.label, style: 'font-weight:600;' })));
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    ORDER.forEach(t => {
+      const tr = el('tr');
+      tr.appendChild(el('td', { class: 'type-' + t, text: TYPE_LABEL[t], style: 'white-space:nowrap;padding-right:6px;' }));
+      STAT_BUFF_FIELDS.forEach(f => {
+        const td = el('td', { style: 'padding:2px 4px;' });
+        td.appendChild(el('input', {
+          type: 'number', id: `${prefix}-statbuff-${t}-${f.key}`, value: '0', step: 'any',
+          style: 'width:80px;padding:3px 4px;border:1px solid var(--input-border);border-radius:4px;background:var(--input-bg);color:var(--text);',
+        }));
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function readStatBuff(prefix) {
+    const statBuff = {};
+    ORDER.forEach(t => {
+      statBuff[t] = {};
+      STAT_BUFF_FIELDS.forEach(f => { statBuff[t][f.key] = getNum(`${prefix}-statbuff-${t}-${f.key}`, 0); });
+    });
+    return statBuff;
+  }
+  function applyStatBuff(prefix, statBuff) {
+    if (!statBuff) return;
+    ORDER.forEach(t => {
+      const s = statBuff[t];
+      if (!s) return;
+      STAT_BUFF_FIELDS.forEach(f => {
+        const el2 = document.getElementById(`${prefix}-statbuff-${t}-${f.key}`);
+        if (el2 && s[f.key] != null) el2.value = s[f.key];
+      });
+    });
+  }
+
+  function buildHeroSelect(id, role) {
+    const sel = el('select', { id });
+    sel.appendChild(el('option', { value: '', text: '(未選択)' }));
+    HEROES_BY_ROLE[role].forEach(h => sel.appendChild(el('option', { value: h.key, text: h.name })));
+    return sel;
+  }
+
+  function describeHeroEffect(heroKey, eqLv, mode) {
+    if (!heroKey || !HEROES[heroKey]) return '';
+    const hero = HEROES[heroKey];
+    const lines = [];
+    (hero.buffs || []).forEach(b => {
+      const statLabel = { dealt: '与ダメージ', taken: '被ダメージ', hp: 'HP' }[b.stat];
+      const scopeLabel = b.scope === 'all' ? '味方全部隊' : TYPE_LABEL[b.scope];
+      lines.push(`${scopeLabel}の${statLabel} ${b.pct >= 0 ? '+' : ''}${(b.pct * 100).toFixed(1)}%`);
+    });
+    (hero.periodicBuffs || []).forEach(pb => {
+      const statLabel = { dealt: '与ダメージ', taken: '被ダメージ', hp: 'HP' }[pb.stat];
+      const scopeLabel = pb.scope === 'all' ? '味方全部隊' : TYPE_LABEL[pb.scope];
+      lines.push(`[周期発動] ${scopeLabel}の${statLabel} ${pb.pct >= 0 ? '+' : ''}${(pb.pct * 100).toFixed(1)}% (${pb.cycleTurns}ターンの周期のうち${pb.activeTurns}ターンだけ有効。発動タイミングは結果の「ターン毎の内訳」に表示されます)`);
+    });
+    if (hero.enemyDebuff) {
+      const statLabel = { dealt: '与ダメージ', taken: '被ダメージ' }[hero.enemyDebuff.stat];
+      lines.push(`敵デバフ: 敵全部隊の${statLabel} ${hero.enemyDebuff.pct >= 0 ? '+' : ''}${(hero.enemyDebuff.pct * 100).toFixed(1)}%`);
+    }
+    if (hero.equip) {
+      const eqF = Math.max(0, Math.min(5, eqLv || 0)) / 5;
+      const statPctNow = hero.equip.statPct * eqF * 100;
+      lines.push(`[専用装備] 殺傷力/HP +${statPctNow.toFixed(1)}%(レベルに比例、計算に反映済み)`);
+      if (hero.equip.skill) {
+        const modeLabel = hero.equip.skill.mode === 'attack' ? '集結(攻撃)' : '駐屯(防衛)';
+        const active = hero.equip.skill.mode === mode;
+        const statLabel = { dealt: '与ダメージ', taken: '被ダメージ', hp: 'HP' }[hero.equip.skill.stat];
+        const magnitude = 15 * eqF;
+        const signedPct = hero.equip.skill.stat === 'taken' ? -magnitude : magnitude;
+        lines.push(`[専用装備遠征スキル・${modeLabel}用] 味方全部隊の${statLabel} ${signedPct >= 0 ? '+' : ''}${signedPct.toFixed(1)}% ${active ? '(現在のモードで有効)' : '(現在のモードでは発動しません)'}`);
+      }
+    }
+    return lines.join('<br>');
+  }
+
+  // ---------------- 兵科パネル(自軍A/B・敵軍で共通の構造) ----------------
+  function buildSidePanel(container, prefix) {
+    container.innerHTML = '';
+
+    // Tier・火晶レベルは兵科(盾兵/槍兵/弓兵)ごとに別々に設定できるスライダー。
+    const topGrid = el('div', { class: 'grid3' });
+    ORDER.forEach(t => {
+      const box = el('div', { class: 'hero-box' });
+      box.appendChild(el('div', { text: TYPE_LABEL[t], style: 'font-weight:600;margin-bottom:6px;' }));
+
+      const lvWrap = el('div', { style: 'margin-bottom:8px;' });
+      lvWrap.appendChild(el('label', { text: 'Tier(T10.0〜T11.0)', style: 'font-size:11px;color:var(--muted);' }));
+      const lvRow = el('div', { class: 'slider-row' });
+      const lvRange = el('input', { type: 'range', id: `${prefix}-lv-${t}`, min: '10', max: '11', step: '0.1', value: '10' });
+      const lvVal = el('span', { class: 'slider-val', id: `${prefix}-lv-${t}-val`, text: '10.0', style: 'min-width:34px;' });
+      lvRow.appendChild(lvRange); lvRow.appendChild(lvVal);
+      lvWrap.appendChild(lvRow);
+      box.appendChild(lvWrap);
+
+      const fcWrap = el('div', {});
+      fcWrap.appendChild(el('label', { text: '火晶レベル(0〜10)', style: 'font-size:11px;color:var(--muted);' }));
+      const fcRow = el('div', { class: 'slider-row' });
+      const fcRange = el('input', { type: 'range', id: `${prefix}-fc-${t}`, min: '0', max: '10', step: '1', value: '7' });
+      const fcVal = el('span', { class: 'slider-val', id: `${prefix}-fc-${t}-val`, text: '7' });
+      fcRow.appendChild(fcRange); fcRow.appendChild(fcVal);
+      fcWrap.appendChild(fcRow);
+      box.appendChild(fcWrap);
+
+      lvRange.addEventListener('input', () => {
+        lvVal.textContent = Number(lvRange.value).toFixed(1);
+        updateStatTable(prefix);
+      });
+      fcRange.addEventListener('input', () => {
+        fcVal.textContent = fcRange.value;
+        updateStatTable(prefix);
+      });
+
+      topGrid.appendChild(box);
+    });
+    container.appendChild(topGrid);
+
+    const countGrid = el('div', { class: 'grid3' });
+    ORDER.forEach(t => {
+      countGrid.appendChild(makeField(`${prefix}-count-${t}`, `${TYPE_LABEL[t]} 兵力数`, 1000));
+    });
+    container.appendChild(countGrid);
+
+    // 駐屯(防衛)側のときだけ意味を持つ項目。「非表示にしてほしいが、裏のロジックは残したままでいい」
+    // とのご要望を受け、この2項目(城壁・拠点補正/駐屯盾兵優先補充ボーナス)の入力欄自体は常に非表示
+    // (display:none)にしている。ただしDOM要素・既定値(城壁補正0%・盾兵優先補充+20%)はそのまま残して
+    // あるため、getNum('${prefix}-wall',0)・getNum('${prefix}-replenish',20)を読む既存の計算ロジックは
+    // 一切変更していない(=既定値が従来通り計算に使われ続ける)。
+    const defGrid = el('div', { class: 'grid3', id: `${prefix}-defense-fields`, style: 'display:none;' });
+    defGrid.appendChild(makeField(`${prefix}-wall`, '城壁・拠点補正 追加被ダメ軽減(%)', 0));
+    const replWrap = el('div', { class: 'field' });
+    replWrap.appendChild(el('label', {}, [
+      document.createTextNode('駐屯 盾兵優先補充ボーナス(盾兵の実効HP+%)'),
+      el('button', { type: 'button', class: 'info-icon', 'data-info': 'shield-replenish', title: 'この項目について' }, [document.createTextNode('i')]),
+    ]));
+    replWrap.appendChild(el('input', { type: 'number', id: `${prefix}-replenish`, value: '20' }));
+    defGrid.appendChild(replWrap);
+    container.appendChild(defGrid);
+    const defNote = el('p', { class: 'sub', text: '↑ この項目は、このサイドが駐屯(防衛)側のときのみ計算に反映されます。', id: `${prefix}-defense-note`, style: 'display:none;' });
+    container.appendChild(defNote);
+
+    const statBox = el('div', { style: 'margin:10px 0;' });
+    const statTable = el('table', { class: 'stat-table', id: `${prefix}-stat-table` });
+    statTable.innerHTML = `<thead><tr><th>兵科</th><th>攻撃力</th><th>防御力</th><th>HP</th><th>殺傷力</th></tr></thead><tbody></tbody>`;
+    statBox.appendChild(el('p', { text: 'Tier・火晶レベルから自動計算された基礎ステータス(参考表示)', style: 'font-size:12px;color:var(--muted);margin:0 0 4px 0;' }));
+    statBox.appendChild(statTable);
+    container.appendChild(statBox);
+
+    // 【今回】「この火晶レベルではこのスキルが発動しています」がその場でわかるように、
+    // 火晶レベルスライダーの値に応じてリアルタイムに切り替わる一覧を追加。
+    const fcSkillBox = el('div', { style: 'margin:10px 0;' });
+    fcSkillBox.appendChild(el('p', { style: 'font-size:12px;color:var(--muted);margin:0 0 4px 0;' }, [
+      document.createTextNode('現在の火晶レベルで発動中の兵科スキル(参考表示)'),
+      el('button', { type: 'button', class: 'info-icon', 'data-info': 'fc-skills', title: 'この項目について' }, [document.createTextNode('i')]),
+    ]));
+    fcSkillBox.appendChild(el('div', { id: `${prefix}-fc-skill-list`, style: 'font-size:12.5px;line-height:1.7;' }));
+    container.appendChild(fcSkillBox);
+
+    const heroGrid = el('div', { class: 'grid3' });
+    ORDER.forEach(role => {
+      const box = el('div', { class: 'hero-box' });
+      box.appendChild(el('div', { text: `${TYPE_LABEL[role]}担当英雄`, style: 'font-weight:600;margin-bottom:6px;' }));
+      const sel = buildHeroSelect(`${prefix}-hero-${role}`, role);
+      box.appendChild(sel);
+      const eqWrap = el('div', { style: 'margin-top:6px;' });
+      eqWrap.appendChild(el('label', { text: '専用装備レベル', style: 'font-size:11px;color:var(--muted);' }));
+      const sliderRow = el('div', { class: 'slider-row' });
+      const range = el('input', { type: 'range', id: `${prefix}-eq-${role}`, min: '0', max: '5', step: '1', value: '5' });
+      const valSpan = el('span', { class: 'slider-val', id: `${prefix}-eq-${role}-val`, text: '5' });
+      sliderRow.appendChild(range);
+      sliderRow.appendChild(valSpan);
+      eqWrap.appendChild(sliderRow);
+      box.appendChild(eqWrap);
+      const effectBox = el('div', { class: 'hero-effect', id: `${prefix}-effect-${role}` });
+      box.appendChild(effectBox);
+      heroGrid.appendChild(box);
+
+      sel.addEventListener('change', () => updateHeroEffect(prefix, role));
+      range.addEventListener('input', () => {
+        valSpan.textContent = range.value;
+        updateHeroEffect(prefix, role);
+      });
+    });
+    container.appendChild(heroGrid);
+
+    container.appendChild(buildStatBuffTable(prefix));
+
+    updateStatTable(prefix);
+    ORDER.forEach(role => updateHeroEffect(prefix, role));
+  }
+
+  function makeField(id, label, value, opts) {
+    const wrap = el('div', { class: 'field' });
+    wrap.appendChild(el('label', { text: label }));
+    const input = el('input', Object.assign({ type: 'number', id, value: String(value), step: 'any' }, opts || {}));
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function updateStatTable(prefix) {
+    const tbody = document.querySelector(`#${prefix}-stat-table tbody`);
+    tbody.innerHTML = '';
+    ORDER.forEach(t => {
+      const lv = getNum(`${prefix}-lv-${t}`, 10);
+      const fc = getNum(`${prefix}-fc-${t}`, 7);
+      const s = SimCore.troopStats(t, lv, fc);
+      const tr = el('tr');
+      tr.appendChild(el('td', { class: 'type-' + t, text: TYPE_LABEL[t] }));
+      tr.appendChild(el('td', { text: s.atk.toFixed(2) }));
+      tr.appendChild(el('td', { text: s.def.toFixed(2) }));
+      tr.appendChild(el('td', { text: s.hp.toFixed(2) }));
+      tr.appendChild(el('td', { text: s.leth.toFixed(2) }));
+      tbody.appendChild(tr);
+    });
+    updateFcSkillList(prefix);
+  }
+
+  // 【今回】火晶レベルのスライダー値に応じて、そのレベルで実際に発動している兵科固有スキル
+  // (sim-core.jsのfcSkill()。閾値Lv3/5/8/10で段階的に強化)をリアルタイム表示する。
+  // updateStatTable()の呼び出し元(Tier/火晶レベルスライダーのinputイベント、初期描画)と
+  // 完全に連動させるため、updateStatTable内から呼び出す形にしている。
+  function updateFcSkillList(prefix) {
+    const box = document.getElementById(`${prefix}-fc-skill-list`);
+    if (!box) return;
+    box.innerHTML = '';
+    ORDER.forEach(t => {
+      const fc = getNum(`${prefix}-fc-${t}`, 7);
+      const info = SimCore.fcSkill(t, fc);
+      const row = el('div', { style: 'margin-bottom:3px;' });
+      row.appendChild(el('span', { class: 'type-' + t, text: `${TYPE_LABEL[t]}(火晶Lv${fc}): `, style: 'font-weight:600;' }));
+      if (!info.note || info.note.length === 0) {
+        row.appendChild(el('span', { text: '発動中のスキルなし(火晶Lv3未満)', style: 'color:var(--muted);' }));
+      } else {
+        row.appendChild(document.createTextNode(info.note.join(' / ')));
+      }
+      box.appendChild(row);
+    });
+  }
+
+  // prefix==='defender' なら敵軍側、それ以外(A/B)なら自軍側のモードを見る
+  function modeForPrefix(prefix) {
+    return prefix === 'defender' ? enemyMode() : selfMode();
+  }
+
+  function updateHeroEffect(prefix, role) {
+    const heroKey = getVal(`${prefix}-hero-${role}`, '');
+    const eqLv = getNum(`${prefix}-eq-${role}`, 5);
+    const box = document.getElementById(`${prefix}-effect-${role}`);
+    if (box) box.innerHTML = describeHeroEffect(heroKey, eqLv, modeForPrefix(prefix));
+  }
+
+  // ---------------- config組み立て ----------------
+  function readSideConfig(prefix) {
+    const mode = modeForPrefix(prefix);
+    const heroes = {};
+    ORDER.forEach(role => {
+      heroes[role] = { heroKey: getVal(`${prefix}-hero-${role}`, ''), eqLv: getNum(`${prefix}-eq-${role}`, 5) };
+    });
+    const counts = {};
+    ORDER.forEach(t => { counts[t] = getNum(`${prefix}-count-${t}`, 0); });
+    const lv = {}, fc = {};
+    ORDER.forEach(t => { lv[t] = getNum(`${prefix}-lv-${t}`, 10); fc[t] = getNum(`${prefix}-fc-${t}`, 7); });
+    const config = {
+      lv,
+      fc,
+      counts,
+      heroes,
+      mode,
+      statBuff: readStatBuff(prefix),
+    };
+    if (mode === 'defense') {
+      config.wallMitigationPercent = getNum(`${prefix}-wall`, 0);
+      config.shieldReplenishBonus = getNum(`${prefix}-replenish`, 20) / 100;
+    }
+    return config;
+  }
+
+  function readMech() {
+    return {
+      counterBonus: getNum('mech-counter', 10) / 100,
+      // 以下3つはT7で解放される兵科固有スキル(wostools.net/wiki/troops/で数値確認済み)。
+      // このツールはTier T10.0〜T11.0のみ対応=常にT7以上のため、入力を求めず固定値として扱う。
+      bandsOfSteel: 0.10, // 盾兵「鋼の帯」: 槍兵に対する防御力+10%
+      volleyMult: 0.10,   // 弓兵「連射」: 10%の確率で2回攻撃→期待値換算で与ダメ+10%
+      ambushRate: 0.20,   // 槍兵「奇襲」: 攻撃の20%が後列の弓兵に直撃
+      // 【v4.16】以前は「兵力数のダメージ寄与指数(1.0=比例、0.5=平方根)」という入力欄で切り替えられる
+      // ようにしていたが、「平方根モデルのみでいい・1.0/0.5という表現がわかりにくい」とのご指摘を受け、
+      // 入力欄を廃止して平方根モデル(0.5)に固定した。
+      countScalingExponent: 0.5,
+    };
+  }
+
+  // ---------------- シナリオ反映(役割バッジ・防衛専用項目の表示切替) ----------------
+  function applyScenario() {
+    const sMode = selfMode(), eMode = enemyMode();
+    const roleText = m => m === 'defense' ? '駐屯(防衛)' : '集結(攻撃)';
+
+    document.getElementById('self-role-badge').textContent = roleText(sMode);
+    document.getElementById('enemy-role-badge').textContent = roleText(eMode);
+    document.getElementById('self-role-desc').textContent =
+      sMode === 'defense' ? '自軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備の遠征スキルは駐屯用のもののみ発動します。'
+                           : '自軍は集結(攻撃)で敵の拠点(砦・王城・ステーション・要塞など)を攻めます。専用装備の遠征スキルは集結用のもののみ発動します。';
+    document.getElementById('enemy-role-desc').textContent =
+      eMode === 'defense' ? '敵軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備の遠征スキルは駐屯用のもののみ発動します。'
+                           : '敵軍が集結(攻撃)で自軍の拠点(砦・王城・ステーション・要塞など)を攻めてきます。専用装備の遠征スキルは集結用のもののみ発動します。';
+
+    // 【今回】「城壁・拠点補正 追加被ダメ軽減(%)」「駐屯 盾兵優先補充ボーナス(盾兵の実効HP+%)」は
+    // 画面から非表示にしてほしいとのご要望を受け、駐屯(防衛)モードであってもこの2項目の入力欄自体は
+    // 表示しないようにした(常時 display:none)。ただし要素はDOM上に残したまま(buildSidePanel側で
+    // 生成される`${prefix}-wall`/`${prefix}-replenish`の値はそのまま)なので、計算ロジック
+    // (getNum('${prefix}-wall',0)・getNum('${prefix}-replenish',20)を読む箇所)は一切変更していない
+    // =既定値(城壁補正0%・盾兵優先補充+20%)が従来通り計算に使われ続ける。
+    ['A', 'B'].forEach(p => {
+      ORDER.forEach(role => updateHeroEffect(p, role));
+    });
+    ORDER.forEach(role => updateHeroEffect('defender', role));
+  }
+
+  // ---------------- タブ ----------------
+  function setupTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+      });
+    });
+  }
+
+  // ---------------- Bパターン(ABテスト)の有効/無効切り替え ----------------
+  // v4.13: 「Bパターンは使わない場合がある」とのご指摘に対応し、既定では非表示・未使用の
+  // オプトイン機能にした(以前はBパターンのタブ・入力欄が常に存在し、兵力未入力の場合のみ
+  // 結果側で自動非表示にしていたが、入力側は常に表示されたままだった)。
+  function isPatternBEnabled() {
+    const cb = document.getElementById('enable-pattern-b');
+    return !!(cb && cb.checked);
+  }
+  function updatePatternBVisibility() {
+    const enabled = isPatternBEnabled();
+    // v4.18: 「パターンAという名称・タブは既定(1つだけ)のときは不要」とのご指摘に対応し、
+    // Bパターンが無効な間はタブバー自体(A/Bどちらのタブも)を非表示にする。パターンAの入力欄
+    // (panel-A)自体はタブなしでそのまま表示され続ける(内部的なA/Bという識別子は維持したまま、
+    // 画面上に「パターンA」という名前・タブを一切出さない)。
+    document.getElementById('pattern-tabs').style.display = enabled ? 'flex' : 'none';
+    if (!enabled) {
+      // Bタブが現在アクティブなまま非表示にはしない(Aタブへ強制的に戻す)。
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('.tab-btn[data-tab="A"]').classList.add('active');
+      document.getElementById('panel-A').classList.add('active');
+    }
+    document.getElementById('btn-run').textContent = enabled ? 'パターンA・Bをシミュレーション実行' : 'シミュレーション実行';
+  }
+  function setupPatternBToggle() {
+    document.getElementById('enable-pattern-b').addEventListener('change', updatePatternBVisibility);
+    updatePatternBVisibility();
+  }
+
+  // ---------------- 結果表示 ----------------
+  const WINNER_LABEL = {
+    attacker: { text: '攻撃側 勝利(占領成功)', cls: 'badge-win' },
+    defender: { text: '防衛側 勝利(攻撃側全滅/撤退)', cls: 'badge-lose' },
+    draw: { text: '相討ち(両軍壊滅)', cls: 'badge-draw' },
+    undecided: { text: '未決着(倍率・設定を見直してください)', cls: 'badge-undecided' },
+  };
+  function fmt(n) { return Math.round(n).toLocaleString('ja-JP'); }
+
+  function renderResultCard(label, res, reqMult, selfIsAttacker) {
+    const card = el('div', { class: 'result-card' });
+    // v4.18: 比較対象(パターンB)が無効なときはlabelを空文字にして渡すため、見出し自体を出さない
+    // (「パターンA」という名称は、実際に2つを比較しているときだけ表示する)。
+    if (label) card.appendChild(el('h3', { text: label }));
+    const w = WINNER_LABEL[res.winner] || WINNER_LABEL.undecided;
+    const p1 = el('p');
+    p1.appendChild(el('span', { class: 'badge ' + w.cls, text: w.text }));
+    card.appendChild(p1);
+
+    const selfKey = selfIsAttacker ? 'attacker' : 'defender';
+    const enemyKey = selfIsAttacker ? 'defender' : 'attacker';
+
+    const remTable = el('table', { class: 'stat-table' });
+    remTable.innerHTML = `<thead><tr><th></th><th class="type-shield">盾兵</th><th class="type-spear">槍兵</th><th class="type-archer">弓兵</th><th>合計</th></tr></thead>`;
+    const rtbody = el('tbody');
+    [['自軍 残存', selfKey], ['敵軍 残存', enemyKey]].forEach(([label2, k]) => {
+      const r = res.remaining[k];
+      const total = r.shield + r.spear + r.archer;
+      const tr = el('tr');
+      tr.appendChild(el('td', { text: label2 }));
+      tr.appendChild(el('td', { text: fmt(r.shield) }));
+      tr.appendChild(el('td', { text: fmt(r.spear) }));
+      tr.appendChild(el('td', { text: fmt(r.archer) }));
+      tr.appendChild(el('td', { text: fmt(total) }));
+      rtbody.appendChild(tr);
+    });
+    remTable.appendChild(rtbody);
+    card.appendChild(el('p', { text: '残存兵力', style: 'font-weight:600;margin:10px 0 2px 0;' }));
+    card.appendChild(remTable);
+
+    const lossTable = el('table', { class: 'stat-table' });
+    lossTable.innerHTML = `<thead><tr><th></th><th class="type-shield">盾兵</th><th class="type-spear">槍兵</th><th class="type-archer">弓兵</th></tr></thead>`;
+    const ltbody = el('tbody');
+    [['自軍 損耗', res.losses[selfKey]], ['敵軍 損耗', res.losses[enemyKey]]].forEach(([lb, d]) => {
+      const tr = el('tr');
+      tr.appendChild(el('td', { text: lb }));
+      tr.appendChild(el('td', { text: fmt(d.shield) }));
+      tr.appendChild(el('td', { text: fmt(d.spear) }));
+      tr.appendChild(el('td', { text: fmt(d.archer) }));
+      ltbody.appendChild(tr);
+    });
+    lossTable.appendChild(ltbody);
+    card.appendChild(el('p', { text: '損耗数(死亡/負傷の内訳は非計算)', style: 'font-weight:600;margin:10px 0 2px 0;' }));
+    card.appendChild(lossTable);
+
+    // 表内では「ノラ(槍兵/S5)」のような兵種/シーズン注記を省き「ノラ」とだけ表示する(担当兵科は
+    // 見出し・スロットから既に自明なため、幅の限られるこの列では簡潔さを優先する)。
+    const shortHeroName = (name) => name.replace(/\([^)]*\)\s*$/, '');
+    const KIND_LABEL = { 才能スキル: '才能スキル', 専用装備遠征スキル: '専用装備遠征スキル', 敵デバフ: '敵デバフ', periodic: '周期発動スキル', proc: '確率発動スキル' };
+    // 1英雄が複数の異なるスキル(例: 才能スキル+専用装備遠征スキル)を持つ場合、それぞれ別項目として
+    // 列挙する(「誰の」だけでなく「どのスキルが」発動しているかをユーザーが判別できるようにするため、v4.8)。
+    // skillNameが判明している場合は実際のスキル名も併記し、未確認の英雄はスキル種別のみを表示する(名称の捏造はしない)。
+    // 各スキルを「英雄名[スキル種別:スキル名]」の1行に整形する(重複除去込み)。
+    const fmtOneSkill = (s) => {
+      const short = shortHeroName(s.heroName);
+      const kindLabel = KIND_LABEL[s.kind] || s.kind;
+      // 和名(skillNameJa)が判明していればそちらを優先表示し、英語名(skillName)は括弧書きで併記する。
+      // 和名が未確認の場合は英語名のみ表示する(名称の捏造はしない)。
+      const displayName = s.skillNameJa || s.skillName;
+      const nameSuffix = displayName ? `:${displayName}${(s.skillNameJa && s.skillName) ? `(${s.skillName})` : ''}` : '';
+      let activeSuffix = '';
+      if (s.kind === 'periodic') activeSuffix = '・発動中';
+      else if (s.kind === 'proc') activeSuffix = `・発動(確率${Math.round((s.chance || 0) * 100)}%、乱数例)`;
+      return `${short}[${kindLabel}${nameSuffix}${activeSuffix}]`;
+    };
+    const dedupeSkillList = (list) => {
+      const seen = new Set();
+      return (list || []).filter(s => {
+        const key = `${s.heroName}|${s.kind}|${s.skillName || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
+    // 「自軍:」「敵軍:」の見出し1行+スキルごとに1行、という形でセル内に積む(スキルが複数ある場合に
+    // 1行のカンマ区切りで詰め込むと視認しづらいため、v4.8でスキルごとに改行する形に変更)。
+    const buildSkillGroup = (label, list) => {
+      const wrap = el('div', { style: 'margin-bottom:4px;' });
+      wrap.appendChild(el('div', { text: label, style: 'font-weight:600;' }));
+      const deduped = dedupeSkillList(list);
+      if (deduped.length === 0) {
+        wrap.appendChild(el('div', { text: '-', style: 'padding-left:6px;color:var(--muted);' }));
+      } else {
+        deduped.forEach(s => wrap.appendChild(el('div', { text: fmtOneSkill(s), style: 'padding-left:6px;' })));
+      }
+      return wrap;
+    };
+
+    // 【v4.11】常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)は、ターンが変わっても
+    // 内容が変わらないため、以前のようにターン毎の内訳表の全行に繰り返し表示すると非常に読みづらかった
+    // (「見づらい」というご指摘の主因)。ここで1回だけ表示し、ターン毎の内訳表は実際にターンごとに
+    // 変動する要素(周期発動スキル・確率発動スキル)だけに絞る。
+    const constWrap = el('div', { style: 'margin-top:10px;' });
+    constWrap.appendChild(el('p', { style: 'font-weight:600;margin:0 0 4px 0;' }, [
+      document.createTextNode('常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)'),
+      el('button', { type: 'button', class: 'info-icon', 'data-info': 'constant-skills', title: 'この欄について' }, [document.createTextNode('i')]),
+    ]));
+    const constBox = el('div', { style: 'font-size:12.5px;line-height:1.5;display:flex;gap:24px;flex-wrap:wrap;' });
+    const selfConstList = (res.sideConstants && res.sideConstants[selfKey]) || [];
+    const enemyConstList = (res.sideConstants && res.sideConstants[enemyKey]) || [];
+    constBox.appendChild(buildSkillGroup('自軍:', selfConstList));
+    constBox.appendChild(buildSkillGroup('敵軍:', enemyConstList));
+    constWrap.appendChild(constBox);
+    card.appendChild(constWrap);
+
+    // 【v4.12】「ターン毎の内訳」を、(1)純粋に数字だけの損耗数テーブルと、(2)周期/確率発動スキルが
+    // 「どのターンで発動したか」を横一列で一望できるタイムライン表、の2つに分離した。以前は1行=1ターンで
+    // スキルの説明文をテキストで積んでいたため、行ごとに高さが不揃いになり縦に長くなって読みづらかった
+    // (「ターン毎の内訳の表がみづらい」という繰り返しのご指摘)。タイムライン表は1行=1スキルにし、
+    // 列をターン番号にして、発動したタームだけ色付きマークを置く形式(ガントチャート的な見せ方)にすることで、
+    // 「いつ発動したか」を文章を読まずに一目で追えるようにした。
+    const details = el('details', { style: 'margin-top:10px;', open: true });
+    details.appendChild(el('summary', { text: 'ターン毎の内訳を見る', style: 'cursor:pointer;font-size:12.5px;color:var(--accent-bright);' }));
+
+    // --- (1) 損耗数テーブル(純粋に数字のみ、3列) ---
+    const miniWrap = el('div', { class: 'mini-table' });
+    const rt = el('table');
+    rt.innerHTML = `<thead>
+      <tr>
+        <th>ターン</th>
+        <th>自軍損耗(盾/槍/弓)</th>
+        <th>敵軍損耗=自軍キル数(盾/槍/弓)</th>
+      </tr>
+    </thead>`;
+    const rtb = el('tbody');
+    const fmtLossTriple = (loss) => `${fmt(loss.shield)} / ${fmt(loss.spear)} / ${fmt(loss.archer)}`;
+    (res.history || []).forEach(h => {
+      // 「自軍の損耗」= 自軍が失った兵数。「敵軍の損耗」= 敵軍が失った兵数(=自軍から見たキル数)。
+      const selfLoss = selfIsAttacker ? h.attackerLosses : h.defenderLosses;
+      const enemyLoss = selfIsAttacker ? h.defenderLosses : h.attackerLosses;
+      const tr = el('tr');
+      tr.appendChild(el('td', { text: h.turn }));
+      tr.appendChild(el('td', { text: fmtLossTriple(selfLoss) }));
+      tr.appendChild(el('td', { text: fmtLossTriple(enemyLoss) }));
+      rtb.appendChild(tr);
+    });
+    rt.appendChild(rtb);
+    miniWrap.appendChild(rt);
+    details.appendChild(el('p', { text: '損耗数の推移', style: 'font-weight:600;margin:8px 0 2px 0;font-size:12.5px;' }));
+    details.appendChild(miniWrap);
+
+    // --- (2) 「発動しうる全スキル」のタイムライン表(1行=1スキル、1列=1ターン) ---
+    // 【v4.13】「遠征スキルがターン毎にどんな感じで発動するか見たい」というご指摘に対応し、
+    // v4.12では周期/確率発動スキルのみだったこのタイムラインに、才能スキル・専用装備遠征スキル・
+    // 敵デバフ(=「常時発動しているスキル」欄と同じ内容)も行として統合した。これらは戦闘中ずっと
+    // 同じ条件で発動し続けるため、全ターンのセルが緑色で埋まった行として表示され、「その英雄の
+    // その遠征スキルは全ターンにわたって発動し続けている」ことが一目でわかる(周期発動=青、
+    // 確率発動=オレンジは間欠的に埋まる)。「常時発動しているスキル」欄(v4.11)も引き続き
+    // 上部に残しているが、このタイムライン表だけを見れば全種類のスキルの発動状況をターン単位で
+    // 追えるようにした。
+    const rowsMap = new Map(); // key -> {sideLabel, heroName, kind, skillName, skillNameJa, chance, turns:Set}
+    const collectRow = (sideLabel, s, turn) => {
+      const key = `${sideLabel}|${s.heroName}|${s.kind}|${s.skillName || ''}`;
+      if (!rowsMap.has(key)) {
+        rowsMap.set(key, { sideLabel, heroName: s.heroName, kind: s.kind, skillName: s.skillName, skillNameJa: s.skillNameJa, chance: s.chance, turns: new Set() });
+      }
+      rowsMap.get(key).turns.add(turn);
+    };
+    (res.history || []).forEach(h => {
+      const selfActive = selfIsAttacker ? h.attackerActiveSkills : h.defenderActiveSkills;
+      const enemyActive = selfIsAttacker ? h.defenderActiveSkills : h.attackerActiveSkills;
+      (selfActive || []).forEach(s => collectRow('自軍', s, h.turn));
+      (enemyActive || []).forEach(s => collectRow('敵軍', s, h.turn));
+    });
+    const turnNumbers = (res.history || []).map(h => h.turn);
+    // 常時発動スキル(才能スキル/専用装備遠征スキル/敵デバフ)を、全ターンにわたって発動中の行として追加する。
+    const CONST_KINDS = new Set(['才能スキル', '専用装備遠征スキル', '敵デバフ']);
+    dedupeSkillList(selfConstList).forEach(s => turnNumbers.forEach(t => collectRow('自軍', s, t)));
+    dedupeSkillList(enemyConstList).forEach(s => turnNumbers.forEach(t => collectRow('敵軍', s, t)));
+    // 常時発動スキル(緑)→周期発動スキル(青)→確率発動スキル(オレンジ)の順に並べ、種類ごとに
+    // まとまって表示されるようにする(自軍を先に、敵軍を後に)。
+    const kindOrder = { '才能スキル': 0, '専用装備遠征スキル': 1, '敵デバフ': 2, periodic: 3, proc: 4 };
+    const sortedRows = Array.from(rowsMap.values()).sort((a, b) => {
+      if (a.sideLabel !== b.sideLabel) return a.sideLabel === '自軍' ? -1 : 1;
+      const ao = kindOrder[a.kind] != null ? kindOrder[a.kind] : 9;
+      const bo = kindOrder[b.kind] != null ? kindOrder[b.kind] : 9;
+      if (ao !== bo) return ao - bo;
+      return String(a.heroName).localeCompare(String(b.heroName));
+    });
+    if (sortedRows.length > 0 && turnNumbers.length > 0) {
+      details.appendChild(el('p', { style: 'font-weight:600;margin:12px 0 2px 0;font-size:12.5px;' }, [
+        document.createTextNode('スキル発動タイムライン(色つきセル=そのターンに発動中)'),
+        el('button', { type: 'button', class: 'info-icon', 'data-info': 'timeline-legend', title: '見方について', text: 'i' }),
+      ]));
+      const tlWrap = el('div', { class: 'mini-table timeline-table' });
+      const tlTable = el('table');
+      const theadRow = el('tr');
+      theadRow.appendChild(el('th', { text: 'スキル', style: 'text-align:left;' }));
+      turnNumbers.forEach(t => theadRow.appendChild(el('th', { text: String(t) })));
+      const thead = el('thead'); thead.appendChild(theadRow);
+      tlTable.appendChild(thead);
+      const tlBody = el('tbody');
+      const cellColorFor = (kind) => {
+        if (CONST_KINDS.has(kind)) return '#10b981'; // 緑: 常時発動(才能/専用装備遠征/敵デバフ)
+        if (kind === 'periodic') return '#38bdf8'; // 水色: 周期発動
+        return '#fb923c'; // オレンジ: 確率発動
+      };
+      sortedRows.forEach(row => {
+        const tr = el('tr');
+        const kindLabel = KIND_LABEL[row.kind] || row.kind;
+        const displayName = row.skillNameJa || row.skillName;
+        const nameSuffix = displayName ? `:${displayName}${(row.skillNameJa && row.skillName) ? `(${row.skillName})` : ''}` : '';
+        const chanceSuffix = row.kind === 'proc' ? `(確率${Math.round((row.chance || 0) * 100)}%)` : '';
+        const label = `[${row.sideLabel}] ${shortHeroName(row.heroName)}[${kindLabel}${nameSuffix}]${chanceSuffix}`;
+        tr.appendChild(el('td', { text: label, style: 'text-align:left;white-space:nowrap;' }));
+        const color = cellColorFor(row.kind);
+        turnNumbers.forEach(t => {
+          const active = row.turns.has(t);
+          const cellStyle = active
+            ? `background:${color};color:#04141c;font-weight:600;text-align:center;`
+            : 'text-align:center;color:#3a4863;';
+          tr.appendChild(el('td', { text: active ? '●' : '·', style: cellStyle }));
+        });
+        tlBody.appendChild(tr);
+      });
+      tlTable.appendChild(tlBody);
+      tlWrap.appendChild(tlTable);
+      details.appendChild(tlWrap);
+    } else {
+      details.appendChild(el('p', { text: '(このパターンでは英雄が選択されていないため、表示できるスキルがありません)', style: 'font-size:12px;color:var(--muted);margin:10px 0 0 0;' }));
+    }
+    card.appendChild(details);
+
+    const heroLogDetails = el('details', { style: 'margin-top:6px;' });
+    heroLogDetails.appendChild(el('summary', { text: '適用された英雄バフの内訳', style: 'cursor:pointer;font-size:12.5px;color:var(--accent-bright);' }));
+    const logDiv = el('div', { class: 'hero-log' });
+    const fmtLogLine = (side, l) => {
+      const roleLabel = l.role ? `/${TYPE_LABEL[l.role]}担当` : '';
+      // ここは数値の裏取り根拠を確認する詳細欄のため、和名(判明分)に加え英語名も併記して
+      // 出典(wostools.net等)との突き合わせができるようにする。
+      const skillLabel = l.skillNameJa
+        ? `[${l.skillNameJa}${l.skillName ? `/${l.skillName}` : ''}]`
+        : (l.skillName ? `[${l.skillName}]` : '');
+      return `[${side}${roleLabel}] ${l.heroName}${skillLabel} - ${l.kind}: ${l.scope === 'all' ? '全部隊' : TYPE_LABEL[l.scope]}の${l.stat} ${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}%`;
+    };
+    (res.heroLogs[selfKey] || []).forEach(l => logDiv.appendChild(el('div', { text: fmtLogLine('自軍', l) })));
+    (res.heroLogs[enemyKey] || []).forEach(l => logDiv.appendChild(el('div', { text: fmtLogLine('敵軍', l) })));
+    heroLogDetails.appendChild(logDiv);
+    card.appendChild(heroLogDetails);
+
+    if (reqMult) {
+      const box = el('div', { class: 'req-mult-box' });
+      box.textContent = reqMult.found
+        ? `必要兵力倍率(目安): 現在の兵種比率のまま 約 ${reqMult.multiplier.toFixed(2)} 倍 で、${selfIsAttacker ? '占領できる' : '守り切れる'}計算です。`
+        : reqMult.message;
+      card.appendChild(box);
+    }
+    return card;
+  }
+
+  // 実際のゲーム内ログには「ターン数」という概念が存在しない(発動回数・キル数・生存数などのみ)ため、
+  // これは本ツール内部の計算用の刻み幅を決めるための固定基準値。「最大ターン数」を十分に確保している限り、
+  // この値を変えても勝敗・残存兵力・必要兵力倍率などの結果には影響しない(ターン別推移の刻み方のみ変わる)。
+  const CALIBRATION_TARGET_TURNS = 60;
+
+  function buildOpts() {
+    const mech = readMech();
+    const targetTurns = CALIBRATION_TARGET_TURNS;
+    const maxTurns = getNum('max-turns', 20000);
+    // キャリブレーションは敵軍側のTier/火晶を基準点として使う(役割に関わらず一貫した基準にするため)。
+    // v4.7で兵科ごとに個別のTier/火晶入力になったため、3兵科の平均値を基準点として用いる
+    // (この基準値は内部の倍率換算にのみ使われ、最大ターン数を十分に確保していれば勝敗・残存兵力・
+    // 必要兵力倍率などの結果自体には影響しない)。
+    const defLv = {}, defFc = {};
+    ORDER.forEach(t => { defLv[t] = getNum(`defender-lv-${t}`, 10); defFc[t] = getNum(`defender-fc-${t}`, 7); });
+    const avgLv = (defLv.shield + defLv.spear + defLv.archer) / 3;
+    const avgFc = (defFc.shield + defFc.spear + defFc.archer) / 3;
+    const baselineForCalib = { lv: { shield: avgLv, spear: avgLv, archer: avgLv }, fc: avgFc };
+    const scale = SimCore.calibrateScale(baselineForCalib, baselineForCalib, targetTurns, mech);
+    return { maxTurns, scale, mech };
+  }
+
+  // パターンBに兵力の入力が一切ない(盾兵・槍兵・弓兵の兵力数がすべて0)場合、
+  // 「入力なし」とみなしてパターンBの結果は表示しない。
+  function hasAnyTroops(config) {
+    return (config.counts.shield || 0) + (config.counts.spear || 0) + (config.counts.archer || 0) > 0;
+  }
+
+  // ---------------- 実際の乱数を使った複数回試行(モンテカルロ、v4.14〜v4.15) ----------------
+  // 「同じ設定なら次回も同じ結果になるのはなぜか、確率発動スキルがあるなら結果もばらつくはずでは」
+  // というご指摘に対応。v4.15では通常の「シミュレーション実行」自体も毎回新しい乱数を引くように
+  // 変更した(runAndRender参照)ため、1回1回の実行はすでに「その回の巡り合わせ」を反映した結果になる。
+  // この「複数回試行」機能は、それとは別に、N回分の巡り合わせをまとめて集計し、勝率・損耗数が
+  // 平均的にどのくらいの幅(最小〜最大)に収まるのかという統計的な傾向を確認するためのもの。
+  function fmtStat(s) {
+    return `平均${fmt(s.avg)} (最小${fmt(s.min)}〜最大${fmt(s.max)})`;
+  }
+  function renderMonteCarloBlock(label, mc) {
+    const box = el('div', { class: 'card', style: 'margin-top:8px;padding:12px;' });
+    // v4.18: 比較対象(パターンB)が無効なときはlabelが空文字になるため、その場合は「N回試行」のみ表示する。
+    box.appendChild(el('p', { text: label ? `${label}: ${mc.trials}回試行` : `${mc.trials}回試行`, style: 'font-weight:600;margin:0 0 6px 0;' }));
+    const winPct = (mc.winRate.attacker * 100).toFixed(1);
+    const losePct = (mc.winRate.defender * 100).toFixed(1);
+    const undecidedPct = (mc.winRate.undecidedOrDraw * 100).toFixed(1);
+    box.appendChild(el('div', {
+      text: `攻撃側勝利: ${winPct}% / 防衛側勝利: ${losePct}%${mc.winRate.undecidedOrDraw > 0 ? ` / 未決着(最大ターン数到達): ${undecidedPct}%` : ''}`,
+      style: 'font-size:13px;margin-bottom:6px;'
+    }));
+    const table = el('table', { class: 'stat-table' });
+    const thead = el('thead');
+    thead.innerHTML = '<tr><th></th><th>盾兵</th><th>槍兵</th><th>弓兵</th></tr>';
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    const rowFor = (rowLabel, stats) => {
+      const tr = el('tr');
+      tr.appendChild(el('td', { text: rowLabel, style: 'white-space:nowrap;font-weight:600;' }));
+      ORDER.forEach(t => tr.appendChild(el('td', { text: fmtStat(stats[t]), style: 'font-size:12px;' })));
+      return tr;
+    };
+    tbody.appendChild(rowFor('自軍損耗', mc.attackerLossStats));
+    tbody.appendChild(rowFor('敵軍損耗', mc.defenderLossStats));
+    table.appendChild(tbody);
+    box.appendChild(table);
+    return box;
+  }
+  function runMonteCarlo() {
+    const opts = buildOpts();
+    const enemyConfig = readSideConfig('defender');
+    const configA = readSideConfig('A');
+    const configB = readSideConfig('B');
+    const selfIsAttacker = selfMode() === 'attack';
+    const showB = isPatternBEnabled() && hasAnyTroops(configB);
+    const trials = Math.max(10, Math.min(2000, getNum('monte-carlo-trials', 200)));
+    // baseSeedは呼び出しのたびに変える(Math.random())。これにより「実行するたびに実際に違う
+    // 乱数サンプルを引く」ことになり、複数回このボタンを押すと(統計的な範囲内で)違う結果が出る。
+    const baseSeed = Math.random();
+
+    const resultBox = document.getElementById('monte-carlo-result');
+    resultBox.innerHTML = '';
+    resultBox.style.display = 'block';
+    resultBox.appendChild(el('p', { text: '計算中...', style: 'font-size:13px;color:var(--muted);' }));
+
+    // 同期計算だが、先に「計算中」を描画させるためわずかに遅延させる。
+    setTimeout(() => {
+      resultBox.innerHTML = '';
+      const mcA = selfIsAttacker
+        ? SimCore.runBattleMonteCarlo(configA, enemyConfig, HEROES, opts, trials, baseSeed + '_A')
+        : SimCore.runBattleMonteCarlo(enemyConfig, configA, HEROES, opts, trials, baseSeed + '_A');
+      // selfが防衛側の場合、Monte Carlo結果のattacker/defenderは実際には敵軍/自軍に対応するため、
+      // 表示側は「自軍損耗」「敵軍損耗」の向きに合わせて読み替える。
+      const adaptForSelf = (mc) => selfIsAttacker ? mc : {
+        trials: mc.trials,
+        winRate: { attacker: mc.winRate.defender, defender: mc.winRate.attacker, undecidedOrDraw: mc.winRate.undecidedOrDraw },
+        attackerLossStats: mc.defenderLossStats,
+        defenderLossStats: mc.attackerLossStats,
+      };
+      resultBox.appendChild(renderMonteCarloBlock(showB ? 'パターンA' : '', adaptForSelf(mcA)));
+      if (showB) {
+        const mcB = selfIsAttacker
+          ? SimCore.runBattleMonteCarlo(configB, enemyConfig, HEROES, opts, trials, baseSeed + '_B')
+          : SimCore.runBattleMonteCarlo(enemyConfig, configB, HEROES, opts, trials, baseSeed + '_B');
+        resultBox.appendChild(renderMonteCarloBlock('パターンB', adaptForSelf(mcB)));
+      }
+    }, 10);
+  }
+
+  function runAndRender(withMultiplier) {
+    const opts = buildOpts();
+    // 【v4.15】「シミュレーション結果もつど(実行するたびに)ばらつくはずだろ」というご指摘に対応。
+    // v4.14まではtrialSeedを既定値0に固定しており、この「シミュレーション実行」ボタン自体は
+    // 何度押しても常に同じ結果になっていた(確率発動スキルの発動判定が毎回同じだったため)。
+    // v4.15では、ボタンを押すたびにMath.random()で新しいtrialSeedを引くようにし、実行するたびに
+    // (実際のゲームと同じように)結果が変わるようにした。ただし1回の実行(1回のボタンクリック)の中では、
+    // パターンA・B・必要兵力倍率の二分探索(内部で兵力を変えながら何度もrunBattleを呼ぶ)のすべてで
+    // 同じtrialSeedを使う。これは、①パターンA/Bを同じ「その回の巡り合わせ」で公平に比較するため、
+    // ②必要兵力倍率の二分探索は、trialSeedさえ固定していれば兵力を増やすほど有利になるという
+    // 単調性が保たれ安定して収束するため(trialSeedは兵力数やターン数に依存しないキーで乱数を
+    // 決めているため、探索対象のmを変えても発動パターン自体は変わらない)。
+    opts.trialSeed = Math.random();
+    const enemyConfig = readSideConfig('defender');
+    const configA = readSideConfig('A');
+    const configB = readSideConfig('B');
+    const selfIsAttacker = selfMode() === 'attack';
+    // v4.13: 「Bパターンを使う」がチェックされている場合のみBパターンを計算・表示対象にする
+    // (未チェックならBの入力欄自体が非表示になっているため、兵力が入っていても無視する)。
+    const showB = isPatternBEnabled() && hasAnyTroops(configB);
+
+    // runBattle(attacker, defender, ...) の引数順に合わせて、自軍/敵軍のどちらが攻撃側かを割り当てる
+    const resA = selfIsAttacker ? SimCore.runBattle(configA, enemyConfig, HEROES, opts) : SimCore.runBattle(enemyConfig, configA, HEROES, opts);
+    const resB = showB ? (selfIsAttacker ? SimCore.runBattle(configB, enemyConfig, HEROES, opts) : SimCore.runBattle(enemyConfig, configB, HEROES, opts)) : null;
+
+    let multA = null, multB = null;
+    if (withMultiplier) {
+      // 必要兵力倍率は「自軍を何倍すれば勝てるか」なので、自軍が攻撃側でない場合は逆転させて解釈する
+      if (selfIsAttacker) {
+        multA = SimCore.findRequiredMultiplier(configA, enemyConfig, HEROES, opts, { minM: 0.1, maxM: 20, iterations: 24 });
+        if (showB) multB = SimCore.findRequiredMultiplier(configB, enemyConfig, HEROES, opts, { minM: 0.1, maxM: 20, iterations: 24 });
+      } else {
+        // 自軍が防衛側の場合、「敵の兵力を何倍にしても自軍が守り切れる倍率」を、敵軍側をスケールして求める
+        multA = SimCore.findRequiredMultiplier(enemyConfig, configA, HEROES, opts, { minM: 0.1, maxM: 20, iterations: 24 });
+        if (multA.found) multA = Object.assign({}, multA, { message: `敵軍の兵力が約${multA.multiplier.toFixed(2)}倍になるまでは守り切れる計算です。` });
+        if (showB) {
+          multB = SimCore.findRequiredMultiplier(enemyConfig, configB, HEROES, opts, { minM: 0.1, maxM: 20, iterations: 24 });
+          if (multB.found) multB = Object.assign({}, multB, { message: `敵軍の兵力が約${multB.multiplier.toFixed(2)}倍になるまでは守り切れる計算です。` });
+        }
+      }
+    }
+
+    const grid = document.getElementById('result-grid');
+    grid.innerHTML = '';
+    grid.style.gridTemplateColumns = showB ? '' : 'minmax(0,1fr)';
+    grid.appendChild(renderResultCard(showB ? 'パターンA' : '', resA, multA, selfIsAttacker));
+    if (showB) grid.appendChild(renderResultCard('パターンB', resB, multB, selfIsAttacker));
+    document.getElementById('result-card').style.display = 'block';
+  }
+
+  // ---------------- 保存/読込 ----------------
+  function collectFullState() {
+    return {
+      scenario: getScenario(),
+      mech: {
+        counter: getNum('mech-counter', 10),
+        // v4.16: scalingExponent(兵力数のダメージ寄与指数)は入力欄ごと廃止し、平方根モデル(0.5)に
+        // 固定した(readMech参照)。旧バージョンの保存データとの互換性のためフィールド自体は残すが、
+        // 読み込み時には使用しない(下記applyFullState参照)。
+        scalingExponent: 0.5,
+      },
+      maxTurns: getNum('max-turns', 20000),
+      defender: readSideConfig('defender'),
+      A: readSideConfig('A'),
+      B: readSideConfig('B'),
+      enablePatternB: isPatternBEnabled(), // v4.13
+    };
+  }
+  function applySideConfig(prefix, cfg) {
+    ORDER.forEach(t => {
+      const lvVal = (cfg.lv && (typeof cfg.lv === 'object' ? cfg.lv[t] : cfg.lv)) || 10;
+      const fcVal = (cfg.fc && (typeof cfg.fc === 'object' ? cfg.fc[t] : cfg.fc)) != null
+        ? (typeof cfg.fc === 'object' ? cfg.fc[t] : cfg.fc) : 5;
+      document.getElementById(`${prefix}-lv-${t}`).value = lvVal;
+      document.getElementById(`${prefix}-lv-${t}-val`).textContent = Number(lvVal).toFixed(1);
+      document.getElementById(`${prefix}-fc-${t}`).value = fcVal;
+      document.getElementById(`${prefix}-fc-${t}-val`).textContent = fcVal;
+    });
+    ORDER.forEach(t => { document.getElementById(`${prefix}-count-${t}`).value = cfg.counts[t]; });
+    ORDER.forEach(role => {
+      document.getElementById(`${prefix}-hero-${role}`).value = (cfg.heroes[role] && cfg.heroes[role].heroKey) || '';
+      const eqLv = (cfg.heroes[role] && cfg.heroes[role].eqLv) || 0;
+      document.getElementById(`${prefix}-eq-${role}`).value = eqLv;
+      document.getElementById(`${prefix}-eq-${role}-val`).textContent = eqLv;
+    });
+    if (cfg.wallMitigationPercent != null) document.getElementById(`${prefix}-wall`).value = cfg.wallMitigationPercent;
+    if (cfg.shieldReplenishBonus != null) document.getElementById(`${prefix}-replenish`).value = cfg.shieldReplenishBonus * 100;
+    applyStatBuff(prefix, cfg.statBuff);
+    updateStatTable(prefix);
+    ORDER.forEach(role => updateHeroEffect(prefix, role));
+  }
+  function applyFullState(state) {
+    if (state.scenario) document.getElementById('scenario').value = state.scenario;
+    if (state.mech) {
+      document.getElementById('mech-counter').value = state.mech.counter;
+      // v4.16: scalingExponent入力欄は廃止済み(常に平方根モデル固定)のため、旧JSONに値が入っていても
+      // 無視する(readMechが常に0.5を使う)。
+    }
+    if (state.maxTurns != null) document.getElementById('max-turns').value = state.maxTurns;
+    if (state.defender) applySideConfig('defender', state.defender);
+    if (state.A) applySideConfig('A', state.A);
+    if (state.B) applySideConfig('B', state.B);
+    // v4.13: 保存データにenablePatternBが無い場合(v4.12以前のJSON)は、Bパターンの入力値が
+    // 実際にあるかどうかで後方互換的に判定する(以前は兵力有無だけで自動判定していたため)。
+    const cb = document.getElementById('enable-pattern-b');
+    cb.checked = state.enablePatternB != null ? !!state.enablePatternB : (!!state.B && hasAnyTroops(state.B));
+    updatePatternBVisibility();
+    applyScenario();
+  }
+  function setupSaveLoad() {
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const state = collectFullState();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'wos-fortress-sim-config.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+    document.getElementById('btn-import').addEventListener('click', () => document.getElementById('file-import').click());
+    document.getElementById('file-import').addEventListener('change', (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { applyFullState(JSON.parse(reader.result)); }
+        catch (e) { alert('JSONの読み込みに失敗しました: ' + e.message); }
+      };
+      reader.readAsText(file);
+      ev.target.value = '';
+    });
+  }
+
+  function init() {
+    buildSidePanel(document.getElementById('defender-panel'), 'defender');
+    buildSidePanel(document.getElementById('panel-A'), 'A');
+    buildSidePanel(document.getElementById('panel-B'), 'B');
+    setupTabs();
+    setupPatternBToggle();
+    setupSaveLoad();
+    setupInfoModal();
+    document.getElementById('scenario').addEventListener('change', applyScenario);
+    applyScenario();
+    document.getElementById('btn-run').addEventListener('click', () => runAndRender(false));
+    document.getElementById('btn-find-mult').addEventListener('click', () => runAndRender(true));
+    document.getElementById('btn-monte-carlo').addEventListener('click', runMonteCarlo);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+
+</script>
+
+</body>
+</html>
