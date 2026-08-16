@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>遠征戦闘シミュレーター v4.27.0</title>
+<title>遠征戦闘シミュレーター v4.28.0</title>
 <!-- v4.27: 「もっと美しい日本語フォントにしてほしい」というご要望を受け、Google Fontsから
      Zen Kaku Gothic New(近未来的でクリーンな印象のゴシック体)をCDN経由で読み込むことにした。
      これにより、これまで維持してきた「単体HTML・外部依存なし(完全オフライン動作)」という設計方針から
@@ -195,13 +195,54 @@
     line-height:1; color:var(--muted); cursor:pointer; padding:2px 6px; border-radius:6px; transition:all .15s ease;
   }
   .modal-close:hover { color:var(--text); background:rgba(255,255,255,.08); }
+
+  /* v4.28: PDFレポート出力(印刷専用セクションパターン)。
+     通常時は#pdf-reportを非表示にしておき、印刷時(=ブラウザの印刷ダイアログで「PDFに保存」を
+     選んだ時)だけ、画面の他の要素をすべて隠して#pdf-reportだけを表示する。ダークテーマの
+     CSS変数には依存せず、印刷を前提に白背景・黒文字の配色をこのコンテナ内だけに明示指定する
+     (配色はdata-vizガイドラインで検証済みの値: 盾兵=blue #2a78d6 / 槍兵=orange #eb6834 /
+     弓兵=aqua #1baf7a、勝敗は good #0ca30c / critical #d03b3b)。 */
+  #pdf-report { display:none; }
+  @media print {
+    /* v4.28: 当初visibility:hiddenで隠す実装にしていたが、非表示にした要素も文書のレイアウト上の
+       高さを占有し続けるため、PDF化した際に末尾へ大量の空白ページが付いてしまう不具合があった。
+       body直下の要素をdisplay:noneで完全に文書の流れから外す方式に変更し、この問題を解消した
+       (#pdf-report以外のbody直下の要素[header・div.wrap]を対象に非表示化する)。 */
+    body > *:not(#pdf-report) { display:none !important; }
+    #pdf-report { display:block !important; }
+    @page { margin:14mm; }
+  }
+  #pdf-report {
+    background:#ffffff; color:#0b0b0b;
+    font-family:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Noto Sans JP",Meiryo,sans-serif;
+    padding:16px; font-size:13px; line-height:1.6;
+  }
+  #pdf-report h1 { font-size:20px; margin:0 0 4px 0; }
+  #pdf-report h2 { font-size:16px; margin:24px 0 8px 0; border-bottom:2px solid #2a78d6; padding-bottom:4px; }
+  #pdf-report h3 { font-size:13.5px; margin:14px 0 6px 0; }
+  /* v4.28修正: 共通CSSの`table { color:var(--text); }`(ダークテーマ用のほぼ白に近い色)が、
+     このレポート内のtableにも適用されてしまい、白背景に対して非常に薄い文字色になっていた不具合を
+     修正(印刷確認時に発覚)。#pdf-report内のtable/th/tdには明示的に濃色を指定し、共通ルールを
+     確実に上書きする。 */
+  #pdf-report table { border-collapse:collapse; width:100%; margin:6px 0 10px 0; font-size:12px; color:#0b0b0b; }
+  #pdf-report th, #pdf-report td { border:1px solid #d8d8d4; padding:4px 8px; text-align:right; color:#0b0b0b; }
+  #pdf-report th:first-child, #pdf-report td:first-child { text-align:left; }
+  #pdf-report th.type-shield, #pdf-report td.type-shield { color:#2a78d6; }
+  #pdf-report th.type-spear, #pdf-report td.type-spear { color:#eb6834; }
+  #pdf-report th.type-archer, #pdf-report td.type-archer { color:#1baf7a; }
+  #pdf-report .chart-img { max-width:100%; display:block; margin:6px 0 4px 0; page-break-inside:avoid; }
+  #pdf-report .legend { font-size:11.5px; color:#52514e; margin:2px 0 8px 0; }
+  #pdf-report .legend span { margin-right:16px; white-space:nowrap; }
+  #pdf-report .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+  #pdf-report .meta { font-size:12px; color:#52514e; margin:0 0 16px 0; }
+  #pdf-report .footnote { font-size:11px; color:#75746c; margin-top:22px; border-top:1px solid #d8d8d4; padding-top:8px; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <h1>遠征戦闘シミュレーター<span class="h1-version">v4.27.0</span><button type="button" class="info-icon" data-info="premise" title="前提条件">i</button></h1>
+    <h1>遠征戦闘シミュレーター<span class="h1-version">v4.28.0</span><button type="button" class="info-icon" data-info="premise" title="前提条件">i</button></h1>
     <p>集結(攻撃)と駐屯(防衛)の戦闘を、陣形・ダメージ式・英雄構成をもとに試算します。</p>
   </div>
 </header>
@@ -282,10 +323,20 @@
 
   <div class="card" id="result-card" style="display:none;">
     <h2>④ シミュレーション結果</h2>
+    <div class="action-row" style="margin-bottom:10px;">
+      <button class="btn-sub" id="btn-pdf-report">グラフ付きPDFレポートを出力</button>
+      <button type="button" class="info-icon" data-info="pdf-report" title="この機能について">i</button>
+    </div>
     <div class="result-grid" id="result-grid"></div>
   </div>
 
 </div>
+
+<!-- v4.28: 「PDFレポートを出力」ボタンで組み立てられるレポート専用コンテナ。通常時は非表示、
+     印刷(=PDF保存)時のみ表示され、それ以外の画面要素は下記@media print側で非表示になる
+     (「印刷専用セクション」パターン)。ダークテーマの配色に依存せず、印刷を前提とした明示的な
+     配色(白背景・黒文字)をこのコンテナ内だけに適用している。 -->
+<div id="pdf-report"></div>
 
 <script>
 // 英雄データ: 各英雄の才能スキル・専用装備・遠征スキルを転記したものです。
@@ -1419,6 +1470,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       <p>本ツールは、この「盾兵が優先的に補充され続ける」という挙動を、補充のキュー(何ターン目に何人補充される、といった詳細)としてそのまま再現するのではなく、簡易的に「盾兵の実効HPが常に+α%されているのと同じ効果」という近似(<code>effectiveHpPerUnit()</code>内で、駐屯側のみ盾兵のHPに(1+補充ボーナス)を掛ける)で代替しています。攻撃(集結)側には適用されません。</p>
       <p><strong>裏取りについての注記</strong>: 「盾兵優先で補充される」という順序・方向性は公式Combat FAQで確認済みですが、それを実効HP+20%という具体的な数値に近似する換算そのものは、以前の別セッションでClaudeが作成した参考ツールの設計を踏襲した値で、独立した一次情報源での裏取りはできていません。実際の補充スピード・戦況次第で効果の大きさは変わりうるため、20%という数値は「それらしい目安」程度のものとご理解ください。この欄は数値を直接編集できるので、実際の戦闘ログと照らして体感に近い値に調整いただくか、0にして完全に無効化することも可能です。</p>`,
     },
+    'pdf-report': {
+      title: 'グラフ付きPDFレポート出力について',
+      html: `<p>「シミュレーション実行」の結果(残存兵力・損耗数・ターン別の推移・常時発動しているスキルなど)を、グラフ付きのレポートとして1枚(パターンBが有効な場合は2パターン分)にまとめ、PDFとして保存できる機能です。</p>
+      <p>実装方式について: 外部のPDF生成ライブラリは使わず、お使いのブラウザ(Chrome/Edge/Safari等)が標準で持っている「印刷」機能を利用しています。ボタンを押すとレポート専用の画面に切り替わり、続けて印刷ダイアログが開くので、そこで出力先を「PDFに保存」に選ぶとPDFファイルとして保存できます(用紙に印刷したい場合はプリンタを選んでいただいても構いません)。グラフ自体は、このツール内でCanvasという仕組みを使ってその場で描画した画像です。</p>
+      <p>グラフの配色(盾兵=青・槍兵=橙・弓兵=緑)は、色の見分けやすさ(色覚の個人差にも配慮したコントラスト基準)を確認したうえで選んでいます。</p>
+      <p><strong>裏取りについての注記</strong>: このレポートに載る数値自体は、画面に表示されているシミュレーション結果をそのまま転記したものであり、レポート化にあたって新たな計算や近似は行っていません。個々の数値の根拠(火晶スキルの効果量など未検証の値を含む)については、通常の結果画面にある各infoアイコンの説明をご参照ください。</p>`,
+    },
   };
   function setupInfoModal() {
     const overlay = document.getElementById('info-modal-overlay');
@@ -1878,6 +1936,52 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
   };
   function fmt(n) { return Math.round(n).toLocaleString('ja-JP'); }
 
+  // 【v4.28】もともとrenderResultCard内のローカル関数だったスキル表示の整形ロジックを、PDFレポート
+  // 出力機能(buildPdfReportContent)からも同じ内容を使い回せるようモジュールスコープに引き上げた。
+  // 表示ロジック自体の変更はない(定義場所の移動のみ)。
+  // 表内では「ノラ(槍兵/S5)」のような兵種/シーズン注記を省き「ノラ」とだけ表示する(担当兵科は
+  // 見出し・スロットから既に自明なため、幅の限られる列では簡潔さを優先する)。
+  const shortHeroName = (name) => name.replace(/\([^)]*\)\s*$/, '');
+  const KIND_LABEL = { 才能スキル: '才能スキル', 専用装備遠征スキル: '専用装備遠征スキル', 敵デバフ: '敵デバフ', periodic: '周期発動スキル', proc: '確率発動スキル' };
+  // 1英雄が複数の異なるスキル(例: 才能スキル+専用装備遠征スキル)を持つ場合、それぞれ別項目として
+  // 列挙する(「誰の」だけでなく「どのスキルが」発動しているかをユーザーが判別できるようにするため、v4.8)。
+  // skillNameが判明している場合は実際のスキル名も併記し、未確認の英雄はスキル種別のみを表示する(名称の捏造はしない)。
+  // 各スキルを「英雄名[スキル種別:スキル名]」の1行に整形する(重複除去込み)。
+  const fmtOneSkill = (s) => {
+    const short = shortHeroName(s.heroName);
+    const kindLabel = KIND_LABEL[s.kind] || s.kind;
+    // 和名(skillNameJa)が判明していればそちらを優先表示し、英語名(skillName)は括弧書きで併記する。
+    // 和名が未確認の場合は英語名のみ表示する(名称の捏造はしない)。
+    const displayName = s.skillNameJa || s.skillName;
+    const nameSuffix = displayName ? `:${displayName}${(s.skillNameJa && s.skillName) ? `(${s.skillName})` : ''}` : '';
+    let activeSuffix = '';
+    if (s.kind === 'periodic') activeSuffix = '・発動中';
+    else if (s.kind === 'proc') activeSuffix = `・発動(確率${Math.round((s.chance || 0) * 100)}%、乱数例)`;
+    return `${short}[${kindLabel}${nameSuffix}${activeSuffix}]`;
+  };
+  const dedupeSkillList = (list) => {
+    const seen = new Set();
+    return (list || []).filter(s => {
+      const key = `${s.heroName}|${s.kind}|${s.skillName || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  // 「自軍:」「敵軍:」の見出し1行+スキルごとに1行、という形でセル内に積む(スキルが複数ある場合に
+  // 1行のカンマ区切りで詰め込むと視認しづらいため、v4.8でスキルごとに改行する形に変更)。
+  const buildSkillGroup = (label, list) => {
+    const wrap = el('div', { style: 'margin-bottom:4px;' });
+    wrap.appendChild(el('div', { text: label, style: 'font-weight:600;' }));
+    const deduped = dedupeSkillList(list);
+    if (deduped.length === 0) {
+      wrap.appendChild(el('div', { text: '-', style: 'padding-left:6px;color:var(--muted);' }));
+    } else {
+      deduped.forEach(s => wrap.appendChild(el('div', { text: fmtOneSkill(s), style: 'padding-left:6px;' })));
+    }
+    return wrap;
+  };
+
   function renderResultCard(label, res, reqMult, selfIsAttacker) {
     const card = el('div', { class: 'result-card' });
     // v4.18: 比較対象(パターンB)が無効なときはlabelを空文字にして渡すため、見出し自体を出さない
@@ -1923,49 +2027,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     lossTable.appendChild(ltbody);
     card.appendChild(el('p', { text: '損耗数(死亡/負傷の内訳は非計算)', style: 'font-weight:600;margin:10px 0 2px 0;' }));
     card.appendChild(lossTable);
-
-    // 表内では「ノラ(槍兵/S5)」のような兵種/シーズン注記を省き「ノラ」とだけ表示する(担当兵科は
-    // 見出し・スロットから既に自明なため、幅の限られるこの列では簡潔さを優先する)。
-    const shortHeroName = (name) => name.replace(/\([^)]*\)\s*$/, '');
-    const KIND_LABEL = { 才能スキル: '才能スキル', 専用装備遠征スキル: '専用装備遠征スキル', 敵デバフ: '敵デバフ', periodic: '周期発動スキル', proc: '確率発動スキル' };
-    // 1英雄が複数の異なるスキル(例: 才能スキル+専用装備遠征スキル)を持つ場合、それぞれ別項目として
-    // 列挙する(「誰の」だけでなく「どのスキルが」発動しているかをユーザーが判別できるようにするため、v4.8)。
-    // skillNameが判明している場合は実際のスキル名も併記し、未確認の英雄はスキル種別のみを表示する(名称の捏造はしない)。
-    // 各スキルを「英雄名[スキル種別:スキル名]」の1行に整形する(重複除去込み)。
-    const fmtOneSkill = (s) => {
-      const short = shortHeroName(s.heroName);
-      const kindLabel = KIND_LABEL[s.kind] || s.kind;
-      // 和名(skillNameJa)が判明していればそちらを優先表示し、英語名(skillName)は括弧書きで併記する。
-      // 和名が未確認の場合は英語名のみ表示する(名称の捏造はしない)。
-      const displayName = s.skillNameJa || s.skillName;
-      const nameSuffix = displayName ? `:${displayName}${(s.skillNameJa && s.skillName) ? `(${s.skillName})` : ''}` : '';
-      let activeSuffix = '';
-      if (s.kind === 'periodic') activeSuffix = '・発動中';
-      else if (s.kind === 'proc') activeSuffix = `・発動(確率${Math.round((s.chance || 0) * 100)}%、乱数例)`;
-      return `${short}[${kindLabel}${nameSuffix}${activeSuffix}]`;
-    };
-    const dedupeSkillList = (list) => {
-      const seen = new Set();
-      return (list || []).filter(s => {
-        const key = `${s.heroName}|${s.kind}|${s.skillName || ''}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    };
-    // 「自軍:」「敵軍:」の見出し1行+スキルごとに1行、という形でセル内に積む(スキルが複数ある場合に
-    // 1行のカンマ区切りで詰め込むと視認しづらいため、v4.8でスキルごとに改行する形に変更)。
-    const buildSkillGroup = (label, list) => {
-      const wrap = el('div', { style: 'margin-bottom:4px;' });
-      wrap.appendChild(el('div', { text: label, style: 'font-weight:600;' }));
-      const deduped = dedupeSkillList(list);
-      if (deduped.length === 0) {
-        wrap.appendChild(el('div', { text: '-', style: 'padding-left:6px;color:var(--muted);' }));
-      } else {
-        deduped.forEach(s => wrap.appendChild(el('div', { text: fmtOneSkill(s), style: 'padding-left:6px;' })));
-      }
-      return wrap;
-    };
 
     // 【v4.11】常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)は、ターンが変わっても
     // 内容が変わらないため、以前のようにターン毎の内訳表の全行に繰り返し表示すると非常に読みづらかった
@@ -2283,6 +2344,302 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     grid.appendChild(renderResultCard(showB ? 'パターンA' : '', resA, multA, selfIsAttacker));
     if (showB) grid.appendChild(renderResultCard('パターンB', resB, multB, selfIsAttacker));
     document.getElementById('result-card').style.display = 'block';
+
+    // 【v4.28】PDFレポート出力機能のため、直近の実行結果一式を保持しておく(ボタンを押した時点で
+    // 再計算するのではなく、画面に表示されているのと同じ結果をそのままレポート化するため)。
+    lastRunData = { resA, resB, showB, selfIsAttacker, multA, multB, configA, configB, enemyConfig };
+  }
+
+  // ---------------- PDFレポート出力(v4.28) ----------------
+  // 「シミュレーター本体にPDF出力機能を追加してほしい、グラフも欲しい」というご依頼への対応。
+  // jsPDF等の外部ライブラリは追加せず(単体HTML・依存最小という方針を維持)、ブラウザ標準の印刷機能
+  // (window.print())を利用した「印刷専用セクション」方式にした。#pdf-reportというコンテナに
+  // レポート内容を組み立てて表示し、それ以外の画面要素は@media print側でvisibility:hiddenにする
+  // (shell.html側のCSS参照)。印刷ダイアログの出力先で「PDFに保存」を選べば、そのままPDFファイルとして
+  // 保存できる(Chrome/Edge/Safari等、主要ブラウザが標準搭載している機能)。
+  // グラフはCanvas 2D APIで自前描画し、toDataURL()でPNG化して<img>として埋め込む(printでcanvasの
+  // 再描画に依存させないための処置)。配色はdata-vizガイドラインの検証済み値を使用
+  // (盾兵=blue #2a78d6 / 槍兵=orange #eb6834 / 弓兵=aqua #1baf7a。ライト背景[印刷用紙を想定]での
+  // カラーユニバーサルデザイン[CVD]適性・コントラストをvalidate_palette.jsで確認済み)。
+  let lastRunData = null;
+
+  const CHART_COLOR = { shield: '#2a78d6', spear: '#eb6834', archer: '#1baf7a' };
+  const CHART_GRID = '#e3e2dd';
+  const CHART_AXIS = '#b9b8b2';
+  const CHART_TEXT_MUTED = '#52514e';
+  const CHART_TEXT_DARK = '#0b0b0b';
+  const STATUS_GOOD = '#0ca30c';
+  const STATUS_CRIT = '#d03b3b';
+
+  function makeChartCanvas(w, h) {
+    const dpr = 2; // 印刷時も荒れないよう2倍解像度で描画してからPNG化する
+    const canvas = document.createElement('canvas');
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { canvas, ctx, w, h };
+  }
+  function chartToImg(chart, alt) {
+    const img = el('img', { class: 'chart-img', alt: alt || '' });
+    img.src = chart.canvas.toDataURL('image/png');
+    img.width = chart.w;
+    img.height = chart.h;
+    return img;
+  }
+  // y軸目盛りをきりのいい数に丸める(1/2/5/10 × 10^n)
+  function niceCeil(v) {
+    if (!(v > 0)) return 1;
+    const exp = Math.floor(Math.log10(v));
+    const base = Math.pow(10, exp);
+    const n = v / base;
+    let niceN;
+    if (n <= 1) niceN = 1; else if (n <= 2) niceN = 2; else if (n <= 5) niceN = 5; else niceN = 10;
+    return niceN * base;
+  }
+  function drawRoundTopRect(ctx, x, y, w, h, r) {
+    if (h <= 0 || w <= 0) return;
+    r = Math.max(0, Math.min(r, w / 2, h));
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // グループ化棒グラフ(カテゴリ×兵科3種)。残存兵力・損耗数の両方で使う共通描画関数。
+  function drawGroupedBarChart(categories, dataByCategory) {
+    const w = 640, h = 260;
+    const chart = makeChartCanvas(w, h);
+    const ctx = chart.ctx;
+    const padL = 60, padR = 16, padT = 14, padB = 30;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    let maxVal = 0;
+    categories.forEach(cat => ORDER.forEach(t => { maxVal = Math.max(maxVal, dataByCategory[cat][t] || 0); }));
+    const niceMax = niceCeil(maxVal);
+    const yTicks = 4;
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= yTicks; i++) {
+      const val = niceMax * i / yTicks;
+      const y = padT + plotH - (val / (niceMax || 1)) * plotH;
+      ctx.strokeStyle = CHART_GRID;
+      ctx.beginPath(); ctx.moveTo(padL, y + 0.5); ctx.lineTo(padL + plotW, y + 0.5); ctx.stroke();
+      ctx.fillStyle = CHART_TEXT_MUTED; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(fmt(val), padL - 8, y);
+    }
+    const groupW = plotW / categories.length;
+    const barGap = 3, barMax = 26;
+    let barW = Math.min(barMax, (groupW * 0.62 - barGap * (ORDER.length - 1)) / ORDER.length);
+    if (barW < 4) barW = 4;
+    const groupInnerW = barW * ORDER.length + barGap * (ORDER.length - 1);
+    categories.forEach((cat, ci) => {
+      const groupX = padL + groupW * ci + (groupW - groupInnerW) / 2;
+      ORDER.forEach((t, si) => {
+        const val = dataByCategory[cat][t] || 0;
+        const barH = niceMax > 0 ? (val / niceMax) * plotH : 0;
+        const x = groupX + si * (barW + barGap);
+        const y = padT + plotH - barH;
+        ctx.fillStyle = CHART_COLOR[t];
+        drawRoundTopRect(ctx, x, y, barW, barH, 3);
+        if (barH > 12) {
+          ctx.fillStyle = CHART_TEXT_DARK; ctx.font = '9.5px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          ctx.fillText(fmt(val), x + barW / 2, y - 2);
+        }
+      });
+      ctx.fillStyle = CHART_TEXT_DARK; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(cat, padL + groupW * ci + groupW / 2, padT + plotH + 8);
+    });
+    ctx.strokeStyle = CHART_AXIS;
+    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(padL + plotW, padT + plotH); ctx.stroke();
+    return chart;
+  }
+  // ターン別の推移を折れ線で描く(自軍/敵軍など複数系列対応)
+  function drawLineChart(xLabels, seriesList) {
+    const w = 640, h = 260;
+    const chart = makeChartCanvas(w, h);
+    const ctx = chart.ctx;
+    const padL = 60, padR = 90, padT = 14, padB = 26;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    let maxVal = 0;
+    seriesList.forEach(s => s.values.forEach(v => { maxVal = Math.max(maxVal, v); }));
+    const niceMax = niceCeil(maxVal);
+    const yTicks = 4;
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i <= yTicks; i++) {
+      const val = niceMax * i / yTicks;
+      const y = padT + plotH - (val / (niceMax || 1)) * plotH;
+      ctx.strokeStyle = CHART_GRID; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y + 0.5); ctx.lineTo(padL + plotW, y + 0.5); ctx.stroke();
+      ctx.fillStyle = CHART_TEXT_MUTED; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(fmt(val), padL - 8, y);
+    }
+    const n = xLabels.length;
+    const xStep = n > 1 ? plotW / (n - 1) : 0;
+    const xTickEvery = Math.max(1, Math.ceil(n / 8));
+    ctx.fillStyle = CHART_TEXT_DARK; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    xLabels.forEach((lb, i) => {
+      if (i % xTickEvery === 0 || i === n - 1) ctx.fillText(String(lb), padL + xStep * i, padT + plotH + 6);
+    });
+    seriesList.forEach(s => {
+      ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      s.values.forEach((v, i) => {
+        const x = padL + xStep * i, y = padT + plotH - (niceMax > 0 ? (v / niceMax) * plotH : 0);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      const lastI = s.values.length - 1;
+      const lx = padL + xStep * lastI, ly = padT + plotH - (niceMax > 0 ? (s.values[lastI] / niceMax) * plotH : 0);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(lx, ly, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = CHART_TEXT_DARK; ctx.font = '11px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${s.label} ${fmt(s.values[lastI])}`, lx + 8, ly);
+    });
+    ctx.strokeStyle = CHART_AXIS;
+    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(padL + plotW, padT + plotH); ctx.stroke();
+    return chart;
+  }
+  function legendRow(items) {
+    const wrap = el('div', { class: 'legend' });
+    items.forEach(it => {
+      const span = el('span');
+      span.appendChild(el('i', { style: `background:${it.color};` }));
+      span.appendChild(document.createTextNode(it.label));
+      wrap.appendChild(span);
+    });
+    return wrap;
+  }
+  function heroDisplayName(entry) {
+    if (!entry || !entry.heroKey) return '(未選択)';
+    const h = HEROES[entry.heroKey];
+    return h ? h.name : entry.heroKey;
+  }
+  function buildConfigSummaryTable(selfLabel, enemyLabel, cfg, enemyCfg) {
+    const table = el('table');
+    table.innerHTML = `<thead><tr><th></th><th class="type-shield">盾兵</th><th class="type-spear">槍兵</th><th class="type-archer">弓兵</th></tr></thead>`;
+    const tbody = el('tbody');
+    const addRow = (label2, cfgObj, rowFn) => {
+      const tr = el('tr'); tr.appendChild(el('td', { text: label2 }));
+      ORDER.forEach(t => tr.appendChild(el('td', { text: rowFn(cfgObj, t) })));
+      tbody.appendChild(tr);
+    };
+    addRow(`${selfLabel} 兵力数`, cfg, (c, t) => fmt(c.counts[t]));
+    addRow(`${selfLabel} Tier/火晶Lv`, cfg, (c, t) => `T${Number(c.lv[t]).toFixed(1)} / Lv${c.fc[t]}`);
+    addRow(`${selfLabel} 担当英雄(装備Lv)`, cfg, (c, t) => {
+      const entry = c.heroes[t]; const name = heroDisplayName(entry);
+      return name === '(未選択)' ? name : `${name} (Lv${entry.eqLv})`;
+    });
+    addRow(`${enemyLabel} 兵力数`, enemyCfg, (c, t) => fmt(c.counts[t]));
+    addRow(`${enemyLabel} Tier/火晶Lv`, enemyCfg, (c, t) => `T${Number(c.lv[t]).toFixed(1)} / Lv${c.fc[t]}`);
+    addRow(`${enemyLabel} 担当英雄(装備Lv)`, enemyCfg, (c, t) => {
+      const entry = c.heroes[t]; const name = heroDisplayName(entry);
+      return name === '(未選択)' ? name : `${name} (Lv${entry.eqLv})`;
+    });
+    table.appendChild(tbody);
+    return table;
+  }
+  // 1パターン(A or B)分のレポートセクションを組み立てる
+  function buildPatternReportSection(patternLabel, res, selfIsAttacker, cfg, enemyConfig) {
+    const selfKey = selfIsAttacker ? 'attacker' : 'defender';
+    const enemyKey = selfIsAttacker ? 'defender' : 'attacker';
+    const sec = el('div', { style: 'margin-bottom:26px;' });
+    if (patternLabel) sec.appendChild(el('h2', { text: patternLabel }));
+
+    const w = WINNER_LABEL[res.winner] || WINNER_LABEL.undecided;
+    const isWin = res.winner === (selfIsAttacker ? 'attacker' : 'defender');
+    const isLose = res.winner === (selfIsAttacker ? 'defender' : 'attacker');
+    const badge = el('p', { style: `font-weight:800;font-size:14px;color:${isWin ? STATUS_GOOD : (isLose ? STATUS_CRIT : CHART_TEXT_MUTED)};` }, [
+      document.createTextNode(`結果: ${w.text}`),
+    ]);
+    sec.appendChild(badge);
+
+    sec.appendChild(el('h3', { text: '対戦条件' }));
+    sec.appendChild(buildConfigSummaryTable('自軍', '敵軍', cfg, enemyConfig));
+
+    // 残存兵力・損耗数のグループ化棒グラフ
+    const remData = {
+      '自軍': res.remaining[selfKey],
+      '敵軍': res.remaining[enemyKey],
+    };
+    const lossData = {
+      '自軍': res.losses[selfKey],
+      '敵軍': res.losses[enemyKey],
+    };
+    const legendItems = ORDER.map(t => ({ color: CHART_COLOR[t], label: TYPE_LABEL[t] }));
+
+    sec.appendChild(el('h3', { text: '残存兵力' }));
+    sec.appendChild(legendRow(legendItems));
+    sec.appendChild(chartToImg(drawGroupedBarChart(['自軍', '敵軍'], remData), '残存兵力グラフ'));
+
+    sec.appendChild(el('h3', { text: '損耗数' }));
+    sec.appendChild(legendRow(legendItems));
+    sec.appendChild(chartToImg(drawGroupedBarChart(['自軍', '敵軍'], lossData), '損耗数グラフ'));
+
+    // ターン別 累積損耗の推移(自軍合計 vs 敵軍合計)
+    const history = res.history || [];
+    if (history.length > 0) {
+      let selfCum = 0, enemyCum = 0;
+      const selfSeries = [], enemySeries = [], turnLabels = [];
+      history.forEach(h => {
+        const selfLoss = selfIsAttacker ? h.attackerLosses : h.defenderLosses;
+        const enemyLoss = selfIsAttacker ? h.defenderLosses : h.attackerLosses;
+        selfCum += (selfLoss.shield + selfLoss.spear + selfLoss.archer);
+        enemyCum += (enemyLoss.shield + enemyLoss.spear + enemyLoss.archer);
+        selfSeries.push(selfCum);
+        enemySeries.push(enemyCum);
+        turnLabels.push(h.turn);
+      });
+      sec.appendChild(el('h3', { text: 'ターン別 累積損耗数の推移' }));
+      sec.appendChild(legendRow([{ color: CHART_COLOR.shield, label: '自軍 累積損耗' }, { color: STATUS_CRIT, label: '敵軍 累積損耗(=自軍キル数)' }]));
+      sec.appendChild(chartToImg(drawLineChart(turnLabels, [
+        { label: '自軍', color: CHART_COLOR.shield, values: selfSeries },
+        { label: '敵軍', color: STATUS_CRIT, values: enemySeries },
+      ]), 'ターン別累積損耗グラフ'));
+    }
+
+    // 常時発動しているスキル(才能/専用装備遠征/敵デバフ)
+    sec.appendChild(el('h3', { text: '常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)' }));
+    const selfConstList = (res.sideConstants && res.sideConstants[selfKey]) || [];
+    const enemyConstList = (res.sideConstants && res.sideConstants[enemyKey]) || [];
+    const constWrap = el('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;font-size:12.5px;' });
+    constWrap.appendChild(buildSkillGroup('自軍:', selfConstList));
+    constWrap.appendChild(buildSkillGroup('敵軍:', enemyConstList));
+    sec.appendChild(constWrap);
+
+    return sec;
+  }
+  function buildPdfReportContent(container) {
+    container.innerHTML = '';
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    container.appendChild(el('h1', { text: '遠征戦闘シミュレーター 分析レポート' }));
+    container.appendChild(el('p', { class: 'meta', text: `出力日時: ${dateStr}` }));
+
+    const d = lastRunData;
+    container.appendChild(buildPatternReportSection(d.showB ? 'パターンA' : '', d.resA, d.selfIsAttacker, d.configA, d.enemyConfig));
+    if (d.showB) {
+      container.appendChild(buildPatternReportSection('パターンB', d.resB, d.selfIsAttacker, d.configB, d.enemyConfig));
+    }
+
+    container.appendChild(el('p', { class: 'footnote', text: '本レポートは「遠征戦闘シミュレーター」上で入力した設定値・計算モデルに基づく試算であり、実際の戦闘結果を保証するものではありません。兵科基礎ステータス等の裏取り状況については、ツール本体の各infoアイコンの説明をご参照ください。' }));
+  }
+  function setupPdfReport() {
+    const btn = document.getElementById('btn-pdf-report');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (!lastRunData) {
+        alert('先に「シミュレーション実行」を行ってから、PDFレポートを出力してください。');
+        return;
+      }
+      const container = document.getElementById('pdf-report');
+      buildPdfReportContent(container);
+      window.print();
+    });
   }
 
   // ---------------- 保存/読込 ----------------
@@ -2380,6 +2737,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     document.getElementById('btn-run').addEventListener('click', () => runAndRender(false));
     document.getElementById('btn-find-mult').addEventListener('click', () => runAndRender(true));
     document.getElementById('btn-monte-carlo').addEventListener('click', runMonteCarlo);
+    setupPdfReport();
   }
 
   document.addEventListener('DOMContentLoaded', init);
