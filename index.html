@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>遠征戦闘シミュレーター v4.29.0</title>
+<title>遠征戦闘シミュレーター v4.32.0</title>
 <!-- v4.27: 「もっと美しい日本語フォントにしてほしい」というご要望を受け、Google Fontsから
      Zen Kaku Gothic New(近未来的でクリーンな印象のゴシック体)をCDN経由で読み込むことにした。
      これにより、これまで維持してきた「単体HTML・外部依存なし(完全オフライン動作)」という設計方針から
@@ -242,7 +242,7 @@
 
 <header>
   <div class="wrap">
-    <h1>遠征戦闘シミュレーター<span class="h1-version">v4.29.0</span><button type="button" class="info-icon" data-info="premise" title="前提条件">i</button></h1>
+    <h1>遠征戦闘シミュレーター<span class="h1-version">v4.32.0</span><button type="button" class="info-icon" data-info="premise" title="前提条件">i</button></h1>
     <p>集結(攻撃)と駐屯(防衛)の戦闘を、陣形・ダメージ式・英雄構成をもとに試算します。</p>
   </div>
 </header>
@@ -269,10 +269,7 @@
         <option value="self-defense">自軍が駐屯(防衛)する / 敵が集結(攻撃)してくる</option>
       </select>
     </div>
-    <div class="grid3">
-      <div class="field"><label>兵種相性ボーナス(盾→槍→弓→盾、%)</label><input type="number" id="mech-counter" value="10"></div>
-      <div class="field"><label>シミュレーション最大ターン数(安全装置)</label><input type="number" id="max-turns" value="20000"></div>
-    </div>
+    <div class="field" style="max-width:320px;"><label>兵種相性ボーナス(盾→槍→弓→盾、%)</label><input type="number" id="mech-counter" value="10"></div>
   </div>
 
   <div class="card">
@@ -339,7 +336,7 @@
 <div id="pdf-report"></div>
 
 <script>
-// 英雄データ: 各英雄の才能スキル・専用装備・遠征スキルを転記したものです。
+// 英雄データ: 各英雄の遠征スキル・専用装備・専用装備スキルを転記したものです。
 // ナタリア/ジャスミン/ジンマンの数値はスクリーンショット表示値と一致確認済みですが、
 // それ以外の英雄は個別の裏取りができていないため、未検証データとして扱ってください(ツール内に注記あり)。
 // buffs: {scope: all/shield/spear/archer, stat: dealt(与ダメ)/taken(被ダメ)/hp, pct: 小数(0.25=25%)}
@@ -355,16 +352,16 @@
 //   していたため、「発動していたりしていなかったりする」という実際の見え方が表現できていなかった
 //   (v4.10までの既存の確率発動系buffs、および取りこぼしていたノラ「Sneak Strike」をこの形へ移行・追加)。
 // equip.statPct: 専用装備によるその兵科自身の殺傷力/HP上昇。専用装備レベル(0〜5)に比例して計算に反映(v4.4〜)。
-// equip.skill: 専用装備の遠征スキル。mode: attack(集結/攻撃時)|defense(駐屯/防衛時)に発動、満レベルで+15%相当
+// equip.skill: 専用装備スキル。mode: attack(集結/攻撃時)|defense(駐屯/防衛時)に発動、満レベルで+15%相当
 // skillName(任意、v4.8で追加、v4.10で51体中45体分を追加調査): buffs/periodicBuffs/equip.skillの各エントリに、
 //   wostools.net/wiki/heroes/等で実際のスキル名(固有名詞、英語)が確認できた場合にのみ設定する
 //   (未確認の場合は省略。値を捏造しない)。「ターン毎の内訳」表の「発動したスキル」欄で、英雄名だけでなく
-//   実際にどのスキル(才能スキル/専用装備遠征スキル/周期発動スキルのいずれか、および分かる場合はその固有名)
+//   実際にどのスキル(遠征スキル/専用装備スキル/周期発動スキルのいずれか、および分かる場合はその固有名)
 //   が発動しているかを表示するために使う。
 //   v4.10(2026/08/15)で、hector/norah以外の全49体についてwostools.net/wiki/heroes/を調査し、既存のpct値と
 //   数値が一致する実際のスキル名をskillNameとして追記した。ただし以下のケースはskillNameを空欄のままにして
 //   いる(各英雄のコメントに詳細を記載): (1) 同値の複数スキルが候補になり1つに絞れない、(2) 数値が一致する
-//   スキルが探索(Exploration)専用スキルに分類されており、才能スキルとして計算に含めるのは前提条件の除外
+//   スキルが探索(Exploration)専用スキルに分類されており、遠征スキルとして計算に含めるのは前提条件の除外
 //   方針と矛盾するため保留、(3) そもそも一致するスキルが見つからなかった(pct値自体の裏取りが必要な可能性)。
 //   S16・S17の6体(シガー・ウルタール・アシュリン・エイダン・ベルサ・エリノ)は、wostools.net/wiki/heroes/が
 //   2026/08/15時点でS15までしかカバーしておらずskillNameを一切設定できていない。
@@ -379,14 +376,14 @@
 //   Strength/鋼鉄意志、リオンのdealt+20%=Song of Lion/獅子の歌、グエンのdealt+25%=Eagle Vision/ホークアイ、
 //   レネのdealt+30%=Dreamcatcher/ドリームイーター)。またシュラのarcher/dealt・archer/taken転置疑いは、
 //   日本語版wikiの数値が本データの既存値(taken-15%/dealt+10%)とそのまま一致したため解消(転置ではなかった)。
-//   一方、ウルカヌスの才能バフについては、日本語版wikiに実際に4つの才能スキルが掲載されていることが判明し、
+//   一方、ウルカヌスの才能バフについては、日本語版wikiに実際に4つの遠征スキルが掲載されていることが判明し、
 //   v4.10で懸念されていた「データ欠落」がほぼ確定した(ただし今回はまだ計算に反映していない、要たちばなさん判断)。
 const HEROES = {
   // 2026/08/15、v4.9のフィードバック(「なんのスキルが発動しているか具体的に書け」)を受け、
   // wostools.net/wiki/heroes/の各英雄ページを調査し、既存のpct値と一致する実際のスキル名を可能な限り
   // 追記した(v4.10)。数値が一致し英雄1体につき1スキルへの帰属が明確なもののみskillNameを設定し、
   // 複数候補が同値で区別できないもの・数値が一致するスキルが探索(Exploration)専用スキルに分類されて
-  // いるもの(才能スキルとして扱うのは本来不整合)・そもそも一致するスキルが見つからなかったものは、
+  // いるもの(遠征スキルとして扱うのは本来不整合)・そもそも一致するスキルが見つからなかったものは、
   // 未確定として空欄のままにしている(捏造しない)。各英雄のコメントに調査結果の詳細を記載。
   natalia: { name: 'ナタリア(盾兵/S1)', role: 'shield',
     // wiki実名: Natalia。「Call of the Wild」は常時dealt+25%(max lv値と一致)。
@@ -402,11 +399,11 @@ const HEROES = {
     // 本来は周期発動スキルの可能性が高いが今回は命名のみ対応し常時倍率のモデルは維持)。
     // hp+15%はwostools.net(英語)上「Natural Leader」(探索専用スキル)の数値と一致していたが、v4.12の
     // 日本語版wiki調査エージェントは「Expedition/Talent Skills」区分としてこのスキルを確認しており、
-    // 両ソースの分類が食い違っている(探索専用か才能スキルか未解決)。数値自体は一致するため和名は
+    // 両ソースの分類が食い違っている(探索専用か遠征スキルか未解決)。数値自体は一致するため和名は
     // 参考として記載するが、計算対象に含めるかどうかの判断が付くまでskillName/skillNameJaは未設定のまま保留する。
-    // (和名候補: 天性のリーダー、要確認: 探索専用/才能スキルの分類が情報源により食い違う)
+    // (和名候補: 天性のリーダー、要確認: 探索専用/遠征スキルの分類が情報源により食い違う)
     // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
-    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Battle Manifesto', skillNameJa: '決起集会' }, { scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Expert Swordsmanship', skillNameJa: '練達なる剣技' }, { scope: 'all', stat: 'hp', pct: 0.15 /* 要確認: Natural Leader(天性のリーダー)の分類(探索専用か才能スキルか)が情報源により食い違うため未確定 */ }],
+    buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Battle Manifesto', skillNameJa: '決起集会' }, { scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Expert Swordsmanship', skillNameJa: '練達なる剣技' }, { scope: 'all', stat: 'hp', pct: 0.15 /* 要確認: Natural Leader(天性のリーダー)の分類(探索専用か遠征スキルか)が情報源により食い違うため未確定 */ }],
     equip: { statPct: 0.625, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Discernment', skillNameJa: '真実の術' } } },
   jasmine: { name: 'ジャスミン(槍兵/S1)', role: 'spear',
     // wiki実名: Molly(JP版で「ジャスミン」に改名されている可能性が高い。役割・世代・数値は完全一致)。
@@ -559,7 +556,7 @@ const HEROES = {
     buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: "Veteran's Might", skillNameJa: '老兵の誇り' }, { scope: 'all', stat: 'dealt', pct: 0.15 /* 要確認: Veteran's Mightの下位Lvか、Power Shotの歩兵専用成分か区別不可 */ }],
     equip: { statPct: 1.605, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Siege Insight', skillNameJa: '精密な布陣' } } },
   gato: { name: 'ガト(盾兵/S8)', role: 'shield',
-    // wiki実名: Gatot。才能スキル欄が空なのは実際に合致(常時発動の全軍バフ系スキルを持たない)ことを確認済み。
+    // wiki実名: Gatot。遠征スキル欄が空なのは実際に合致(常時発動の全軍バフ系スキルを持たない)ことを確認済み。
     // v4.12: 和名を日本語版wikiで確認(数値完全一致)。
     buffs: [], enemyDebuff: { stat: 'dealt', pct: -0.25, skillName: 'Royal Legion', skillNameJa: '王者の師' },
     equip: { statPct: 1.93, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Indestructible City', skillNameJa: '不滅の城' } } },
@@ -576,13 +573,13 @@ const HEROES = {
     equip: { statPct: 1.93, skill: { mode: 'attack', scope: 'all', stat: 'dealt', skillName: 'Abyssal Blessing', skillNameJa: '深淵の加護' } } },
   magnus: { name: 'マグヌス(盾兵/S9)', role: 'shield',
     // taken-15%はwiki上「Heroic Stock」(探索専用スキル)の数値と一致するが、探索専用スキルは本来
-    // 才能スキルとして計算に含めるべきでない(前提条件の除外方針と矛盾)ため、skillNameは付与せず保留する
+    // 遠征スキルとして計算に含めるべきでない(前提条件の除外方針と矛盾)ため、skillNameは付与せず保留する
     // (和名候補: 勇者の血脈。v4.12日本語版wikiでも探索/遠征寄りの専属装備スキルとして扱われていることを再確認)。
     buffs: [{ scope: 'all', stat: 'dealt', pct: 0.25, skillName: 'Rapacious', skillNameJa: '怒りの波' }, { scope: 'all', stat: 'taken', pct: -0.15 /* 要確認: Heroic Stock(勇者の血脈)は探索専用寄りのスキルのため未確定 */ }],
     equip: { statPct: 2.32, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Valoric Inspiration', skillNameJa: '英霊の意志' } } },
   fred: { name: 'フレッド(槍兵/S9)', role: 'spear',
     // spear/dealt+50%・all/dealt+20%・敵デバフ-5%のいずれも、wiki記載のスキルレベルと一致せず未確定。
-    // v4.12で日本語版wikiも再調査したが、フレッドの才能スキル6つ(人工降雨・高圧水銃・特級警戒・放水砲制圧・
+    // v4.12で日本語版wikiも再調査したが、フレッドの遠征スキル6つ(人工降雨・高圧水銃・特級警戒・放水砲制圧・
     // 酸性溶液・猛烈な攻勢)のいずれにも該当する数値が無く、2つの独立ソースで見つからないため、
     // pct値自体の裏取り誤りの可能性がさらに高まった。
     buffs: [{ scope: 'spear', stat: 'dealt', pct: 0.50 /* 要確認: 日英2ソースで一致するスキルが見つからず */ }, { scope: 'all', stat: 'dealt', pct: 0.20 /* 要確認: 同上 */ }], enemyDebuff: { stat: 'dealt', pct: -0.05 /* 要確認: 同上 */ },
@@ -603,9 +600,9 @@ const HEROES = {
     equip: { statPct: 2.775, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Day of the Guard', skillNameJa: '灼熱の堅城' } } },
   freya: { name: 'フレイヤ(槍兵/S10)', role: 'spear',
     // shield/archer(taken・dealt)4本は同一スキル「Night's Vengeance」の分解。spear/dealt+30%はwiki上
-    // 「Night Raid」(探索専用スキル)の数値と一致するが、探索専用スキルのため才能スキルとして計算に
+    // 「Night Raid」(探索専用スキル)の数値と一致するが、探索専用スキルのため遠征スキルとして計算に
     // 含めるべきでない(前提条件の除外方針と矛盾)ため、skillNameは付与せず保留する。v4.12で日本語版wikiも
-    // 確認したが、フレイヤの才能スキル一覧に「槍兵」への言及自体が一切なく、探索専用スキル疑惑がさらに強まった。
+    // 確認したが、フレイヤの遠征スキル一覧に「槍兵」への言及自体が一切なく、探索専用スキル疑惑がさらに強まった。
     buffs: [{ scope: 'shield', stat: 'taken', pct: -0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'archer', stat: 'taken', pct: -0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'shield', stat: 'dealt', pct: 0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'archer', stat: 'dealt', pct: 0.15, skillName: "Night's Vengeance", skillNameJa: '疾風の一撃' }, { scope: 'spear', stat: 'dealt', pct: 0.30 /* 要確認: Night Raidは探索専用スキルの可能性が高い(日英2ソースとも槍兵への言及なし) */ }],
     equip: { statPct: 2.775, skill: { mode: 'defense', scope: 'all', stat: 'taken', skillName: 'Defender of the Watch', skillNameJa: '闇夜の見張り' } } },
   blanche: { name: 'ブランシュ(弓兵/S10)', role: 'archer',
@@ -669,9 +666,9 @@ const HEROES = {
     buffs: [{ scope: 'shield', stat: 'taken', pct: -0.25, skillName: 'Plantage', skillNameJa: '茨の花園' }, { scope: 'spear', stat: 'dealt', pct: 0.25, skillName: 'Plantage', skillNameJa: '茨の花園' }, { scope: 'all', stat: 'dealt', pct: 0.25 /* 要確認: 日英2ソースとも一致するスキルが見つからず、spear/dealtとの重複の可能性 */ }],
     equip: { statPct: 4.05, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Fruit of Life', skillNameJa: '自然の祝福' } } },
   vulcanus: { name: 'ウルカヌス(弓兵/S13)', role: 'archer',
-    // 【重要・要たちばなさん判断】v4.10時点ではwostools.net(英語)にウルカヌスの才能スキルとして「Fire of
+    // 【重要・要たちばなさん判断】v4.10時点ではwostools.net(英語)にウルカヌスの遠征スキルとして「Fire of
     // Hope」「Breaker Steel」「True Strike」の3つが存在するのを確認していたが、本データの才能バフは空欄の
-    // ままだった。v4.12でたちばなさんご指定の日本語版wikiを直接確認したところ、実際には才能スキルが4つ
+    // ままだった。v4.12でたちばなさんご指定の日本語版wikiを直接確認したところ、実際には遠征スキルが4つ
     // (攻撃/防御バフ・敵デバフ・周期発動の追加ダメージ・周期発動のデバフ+バフ)存在することが判明し、
     // 「データ欠落」がほぼ確定した。ただし、これらを計算に反映するとウルカヌスの戦闘力が変わる(現状より
     // 強くなる)ため、今回は数値を追加せず、日本語版wikiで確認した内容をそのまま記録するに留める:
@@ -698,7 +695,7 @@ const HEROES = {
     equip: { statPct: 4.90, skill: { mode: 'defense', scope: 'all', stat: 'hp', skillName: 'Wall of Despair', skillNameJa: 'ブルーウォール' } } },
   estella: { name: 'エステラ(槍兵/S15)', role: 'spear',
     // wiki実名: Estrella。dealt/taken(1本目)は「Dawn Canvas」、shield/taken・spear/dealtは「Splendid Scene」の分解。
-    // v4.12: 日本語版wikiで数値は完全一致確認できたが、このページのみ才能スキル名自体が英語表記のまま
+    // v4.12: 日本語版wikiで数値は完全一致確認できたが、このページのみ遠征スキル名自体が英語表記のまま
     // (未翻訳)だったため、和名(skillNameJa)は設定できなかった。
     buffs: [{ scope: 'all', stat: 'dealt', pct: 0.15, skillName: 'Dawn Canvas' }, { scope: 'all', stat: 'taken', pct: -0.10, skillName: 'Dawn Canvas' }, { scope: 'shield', stat: 'taken', pct: -0.25, skillName: 'Splendid Scene' }, { scope: 'spear', stat: 'dealt', pct: 0.25, skillName: 'Splendid Scene' }],
     equip: { statPct: 4.90, skill: { mode: 'defense', scope: 'all', stat: 'dealt', skillName: 'Homeland Defense', skillNameJa: 'ファントムヘヴン' } } },
@@ -750,7 +747,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { HEROES }
 //
 // 本ファイルの兵種基礎ステータス(FC_STATS)は wostools.net/wiki/troops/ 掲載の
 // 公式Fire Crystal Troop Statsに基づく値です。英雄データ(HEROES)は各英雄の
-// 才能スキル・専用装備・遠征スキルを転記したもので、個々の数値までは独立検証
+// 遠征スキル・専用装備・遠征スキルを転記したもので、個々の数値までは独立検証
 // できていないため未検証部分として扱ってください(ツール内注記あり)。
 //
 // ラウンド経過に伴う「兵科ごとの現存数に応じたダメージ減衰」「勝敗判定」の具体的な
@@ -923,7 +920,7 @@ function buildMods(heroSelection, heroesDb, mode, statBuff, enemyAccumOut) {
   // constant: 「常時発動しているスキル」欄に表示するための、常時(または装備レベル・戦闘モードなど戦闘開始時点で
   // 確定する条件)で発動しているスキル源の一覧。{role,heroName,kind,skillName} 1エントリ=1スキル
   // (同じ英雄が複数の異なるスキルを持つ場合は、スキルごとに別エントリとして積む)。
-  // kind: '才能スキル' | '専用装備遠征スキル' | '敵デバフ' (どの種類のスキルが発動しているかをUIで区別するため)
+  // kind: '遠征スキル' | '専用装備スキル' | '敵デバフ' (どの種類のスキルが発動しているかをUIで区別するため)
   // ※ 確率発動スキル(procBuffs)はここには含めない。数値としては期待値換算で常時accumに加算済みだが、
   //   表示上は「ターン毎の内訳」側でその確率に従った乱数例を都度表示するため(v4.11)。
   const constant = [];
@@ -934,12 +931,12 @@ function buildMods(heroSelection, heroesDb, mode, statBuff, enemyAccumOut) {
     const seenTalentSkillNames = new Set();
     (hero.buffs || []).forEach(b => {
       addPct(accum, b.scope, b.stat, b.pct * 100);
-      log.push({ role, heroName: hero.name, kind: '才能スキル', scope: b.scope, stat: b.stat, pct: b.pct * 100, skillName: b.skillName, skillNameJa: b.skillNameJa });
+      log.push({ role, heroName: hero.name, kind: '遠征スキル', scope: b.scope, stat: b.stat, pct: b.pct * 100, skillName: b.skillName, skillNameJa: b.skillNameJa });
       // skillNameが分かっている場合は同じスキル名につき1エントリにまとめ、不明な場合は英雄1体につき1エントリにする。
       const dedupeKey = b.skillName || '__unnamed_talent__';
       if (!seenTalentSkillNames.has(dedupeKey)) {
         seenTalentSkillNames.add(dedupeKey);
-        constant.push({ role, heroName: hero.name, kind: '才能スキル', skillName: b.skillName, skillNameJa: b.skillNameJa });
+        constant.push({ role, heroName: hero.name, kind: '遠征スキル', skillName: b.skillName, skillNameJa: b.skillNameJa });
       }
     });
     (hero.periodicBuffs || []).forEach(pb => {
@@ -985,17 +982,17 @@ function buildMods(heroSelection, heroesDb, mode, statBuff, enemyAccumOut) {
       const f = eqLv / 5;
       const s = hero.equip.skill;
       if (s.mode === mode && f > 0) {
-        const magnitude = 15 * f; // 専用装備の遠征スキルは満レベルで+15%相当
+        const magnitude = 15 * f; // 専用装備スキルは満レベルで+15%相当
         // 'taken'(被ダメ)方向は「軽減」が本来の効果なので符号を反転する。
         // 以前はここが常に+側で加算されており、防衛系(stat:'taken')の遠征スキルを持つ英雄
         // (ローガン、アクモス等7体)が、実際には被ダメが増える(逆効果になる)バグがあった。
         const signedPct = s.stat === 'taken' ? -magnitude : magnitude;
         addPct(accum, s.scope, s.stat, signedPct);
-        log.push({ role, heroName: hero.name, kind: `専用装備遠征スキル(Lv.${eqLv})`, scope: s.scope, stat: s.stat, pct: signedPct, skillName: s.skillName, skillNameJa: s.skillNameJa });
+        log.push({ role, heroName: hero.name, kind: `専用装備スキル(Lv.${eqLv})`, scope: s.scope, stat: s.stat, pct: signedPct, skillName: s.skillName, skillNameJa: s.skillNameJa });
         // 遠征スキルはeqLv>0かつ現在の戦闘モード(集結/駐屯)と一致する場合のみ発動する条件付きスキルなので、
-        // 「発動したスキル」欄でも才能スキルとは明確に区別して表示する(ユーザーからの「どの遠征スキルが
+        // 「発動したスキル」欄でも遠征スキルとは明確に区別して表示する(ユーザーからの「どの遠征スキルが
         // 発動しているか分からない」という指摘への対応)。
-        constant.push({ role, heroName: hero.name, kind: '専用装備遠征スキル', skillName: s.skillName, skillNameJa: s.skillNameJa });
+        constant.push({ role, heroName: hero.name, kind: '専用装備スキル', skillName: s.skillName, skillNameJa: s.skillNameJa });
       }
     }
     // 専用装備そのものの殺傷力/HP上昇(statPct)。以前は表示のみで計算に反映していなかったが、
@@ -1322,7 +1319,7 @@ function runBattle(attackerConfig, defenderConfig, heroesDb, opts) {
       defenderLosses: defenderLossesThisTurn,
       // attackerActiveSkills/defenderActiveSkills = このターン「発動した」と表示すべき、変動要素のスキル一覧
       // (周期発動スキル=確定的な周期条件、確率発動スキル=実際のchance%に従った疑似乱数の一例。
-      // 常時発動しているスキル(才能スキル・専用装備遠征スキル・敵デバフ)はsideConstants側に1回だけ記載)
+      // 常時発動しているスキル(遠征スキル・専用装備スキル・敵デバフ)はsideConstants側に1回だけ記載)
       attackerActiveSkills: aActiveSkills,
       defenderActiveSkills: dActiveSkills,
     });
@@ -1358,7 +1355,7 @@ function runBattle(attackerConfig, defenderConfig, heroesDb, opts) {
     winner, endedAtTurn: turn,
     history, losses: { attacker: lossesA, defender: lossesD }, remaining,
     heroLogs: { attacker: A.log, defender: D.log },
-    // sideConstants: 常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)の一覧。
+    // sideConstants: 常時発動しているスキル(遠征スキル/専用装備スキル/敵デバフ)の一覧。
     // ターンによって変わらないため、「ターン毎の内訳」表とは別に1回だけ表示するために追加(v4.11)。
     sideConstants: { attacker: A.constant, defender: D.constant },
   };
@@ -1446,12 +1443,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
         <li>兵種基礎ステータス(T10/T11×火晶Lv0〜10)は、wostools.net/wiki/troops/掲載の公式Fire Crystal Troop Statsに基づく値です。</li>
         <li>兵種相性(盾→槍→弓→盾、各+10%)は、公式ガイド「槍兵は歩兵への与ダメージ-10%」および同盟内の解説資料「弓が盾を削り、槍が弓を削る」の両方と整合する形にしています。</li>
         <li>盾兵「鋼の帯」(槍兵に対する防御+10%)・槍兵「奇襲」(攻撃の20%が後列弓兵に直撃)・弓兵「連射」(10%の確率で2回攻撃→期待値換算で与ダメ+10%)は、いずれもT7で解放される兵科固有スキルで、wostools.net/wiki/troops/の各兵科ページに記載の数値と一致確認済みです。このツールはTier T10.0〜T11.0のみ対応しており、T7より常に上のため、これら3つは入力を求めず内部で常時有効な固定値として計算しています。</li>
-        <li>英雄データ(才能スキル・専用装備・遠征スキル)は、個々の英雄の数値まで独立に裏取りはできていません。実際の効果と違う場合は編集してご利用ください。専用装備そのものの殺傷力/HP上昇(statPct)は、専用装備レベルに比例する形で計算に反映しています。</li>
+        <li>英雄データ(遠征スキル・専用装備・専用装備スキル)は、個々の英雄の数値まで独立に裏取りはできていません。実際の効果と違う場合は編集してご利用ください。専用装備そのものの殺傷力/HP上昇(statPct)は、専用装備レベルに比例する形で計算に反映しています。</li>
         <li>発動条件付きの英雄スキルは2種類に分けて扱っています。①「n回攻撃ごとにmターン持続」のような確定的な周期発動スキルは、実際にどのターンで有効/無効かをそのままシミュレーションします。②「〇%の確率で発動」のような確率発動型スキルは、①と同様に「そのターン実際に発動したかどうか」を都度の乱数判定で決め、発動したターンだけ実際の効果量(満額)を戦闘計算に反映します。この乱数は「シミュレーション実行」「必要兵力倍率を逆算」ボタンを押すたびに新しく引き直すため、同じ設定でも実行するたびに結果が変わります(実際のプレイと同じように、毎回の巡り合わせで結果がばらつきます)。ただし1回のボタンクリックの中では、パターンA・Bの比較や必要兵力倍率の二分探索はすべて同じ乱数の巡り合わせで行うため、公平な比較・安定した収束が保たれます。</li>
         <li>各軍設定の「通常のバフ」欄は、ゲーム内の英雄比較画面にある「追加ステータス」(領主装備・専門家・戦争研究・ペットのベースバフ・英雄バフ等すべて込みの兵科別合計%)を、そのまま入力する欄です。ペットを「有効化」した場合のみ乗る個別追加効果(ペットごとに内容が異なるもの)は対象外としています。</li>
         <li>【v4.29で追加】「防御力+%」欄が100%を超える(高レベルアカウントでは十分あり得ます)と、単純な「1-防御力%/100」という式では被ダメ倍率が0を下回ってしまい、ダメージが実質マイナス(=毎ターン兵力が回復し続ける)になって計算が破綻する不具合がありました。これを受け、被ダメ・HPの各倍率は最低0.05倍(最大95%軽減相当)で下限クリップするようにしています。この0.05という具体的な数値はゲーム公式の軽減上限を裏取りしたものではなく、「計算が破綻しないようにする」ための本ツール側の安全策である点にご留意ください。</li>
-        <li>ダメージ計算式(攻撃力×殺傷力/(殺傷力+防御力))自体は公式の正確な計算式が非公開であることを踏まえた近似式で、実際のゲーム内の戦闘ログ・戦闘メール画面には「ターン数」という概念自体が存在しないため、「ターン」は本ツール内部だけの計算用の刻みです。全体のダメージ倍率は、同格・同兵力どうしの戦闘を想定した内部の基準値から自動算出しており、この基準値は「最大ターン数(安全装置)」を十分な大きさにしておけば、勝敗・残存兵力・必要兵力倍率などの結果には影響しません。</li>
+        <li>ダメージ計算式(攻撃力×殺傷力/(殺傷力+防御力))自体は公式の正確な計算式が非公開であることを踏まえた近似式で、実際のゲーム内の戦闘ログ・戦闘メール画面には「ターン数」という概念自体が存在しないため、「ターン」は本ツール内部だけの計算用の刻みです。全体のダメージ倍率は、同格・同兵力どうしの戦闘を想定した内部の基準値から自動算出しています。</li>
         <li>ターンが経過するにつれて兵科ごとの現存数に応じてダメージが減衰していく処理や、両軍同時解決の具体的な実装は本ツール独自の実装です。</li>
+        <li>【v4.32で変更】以前あった「シミュレーション最大ターン数(安全装置)」の入力欄は廃止し、どちらかの軍の兵力(盾兵・槍兵・弓兵の合計)が0になる=決着がつくまで自動的にシミュレーションを続ける仕様に変更しました。両軍が極端に拮抗し続ける等の理論上の想定外ケースでブラウザが無応答にならないよう、内部だけで使う十分に大きな上限ターン数は残していますが、通常の対戦設定でこの上限に達することはありません。</li>
         <li>Tier・火晶レベルは、兵科(盾兵/槍兵/弓兵)ごとに個別のスライダーで設定します。</li>
         <li>「2つの編成を見比べる(ABテスト)」にチェックを入れた場合のみ、比較用の2つ目の編成(パターンB)の入力欄・タブが表示され、シミュレーション・比較の対象になります。未チェックの場合は1つの編成のみでシミュレーションします。</li>
         <li>数値・仕様は目安です。実際の拠点争奪戦(砦・王城・ステーション・要塞など)の結果を記録し、必要に応じて相性%やスキル数値を調整していくことをおすすめします。</li>
@@ -1468,11 +1466,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     },
     'constant-skills': {
       title: '「常時発動しているスキル」欄について',
-      html: `<p>才能スキル(英雄の常時バフ)、専用装備遠征スキル(専用装備Lvが1以上かつ現在の戦闘モード[集結/駐屯]と一致する場合のみ発動)、敵デバフ(自軍英雄が敵軍に与える常時デバフ)は、戦闘中ずっと同じ内容のためここに1回だけ表示しています。スキル名(固有名詞)は、実際の名称が確認できた英雄についてのみ和名/英語名を併記しており、それ以外はスキル種別のみの表示になります(未確認の名称を推測で記載することはしていません)。各スキルの具体的な数値は「適用された英雄バフの内訳」を参照してください。</p>`,
+      html: `<p>遠征スキル(英雄の常時バフ)、専用装備スキル(専用装備Lvが1以上かつ現在の戦闘モード[集結/駐屯]と一致する場合のみ発動)、敵デバフ(自軍英雄が敵軍に与える常時デバフ)は、戦闘中ずっと同じ内容のためここに1回だけ表示しています。スキル名(固有名詞)は、和名が確認できた英雄についてはその和名のみを表示し、和名が未確認で英語名のみ判明している英雄はその英語名を表示します(名称自体が一切未確認の場合はスキル種別のみの表示になります。未確認の名称を推測で記載することはしていません)。各スキルの具体的な数値は「適用された英雄バフの内訳」を参照してください。</p>`,
     },
     'timeline-legend': {
       title: 'スキル発動タイムラインの見方',
-      html: `<p>緑色のセルは常時発動スキル(才能スキル・専用装備遠征スキル・敵デバフ。選択・条件を満たしている間は戦闘開始から終了まで一貫して発動し続けるため全ターン埋まります)、青色のセルは周期発動スキル(n回攻撃ごとにmターン持続する確定的な周期。実際にそのターンが有効期間に該当する場合のみ発動)、オレンジ色のセルは確率発動スキル(実際のゲーム内の確率に従って、そのターンに発動したかどうかを疑似乱数で判定したもの)です。</p>
+      html: `<p>緑色のセルは常時発動スキル(遠征スキル・専用装備スキル・敵デバフ。選択・条件を満たしている間は戦闘開始から終了まで一貫して発動し続けるため全ターン埋まります)、青色のセルは周期発動スキル(n回攻撃ごとにmターン持続する確定的な周期。実際にそのターンが有効期間に該当する場合のみ発動)、オレンジ色のセルは確率発動スキル(実際のゲーム内の確率に従って、そのターンに発動したかどうかを疑似乱数で判定したもの)です。</p>
       <p>発動したターンは実際にその効果量(満額)が損耗数などの計算にも反映されます(表示だけでなく計算結果も連動します)。この確率発動スキルの発動パターンは「シミュレーション実行」ボタンを押すたびに新しい乱数を引くため、同じ設定でもう一度実行すると内容が変わります。ただし1回の実行内では、パターンA・Bどちらも同じ乱数を使って公平に比較します。試行を重ねた統計的な傾向を見たい場合は、下部の「実際の乱数で複数回試行」機能をお使いください。</p>`,
     },
     'fc-skills': {
@@ -1491,6 +1489,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       html: `<p>「シミュレーション実行」の結果(残存兵力・損耗数・ターン別の推移・常時発動しているスキルなど)を、グラフ付きのレポートとして1枚(パターンBが有効な場合は2パターン分)にまとめ、PDFとして保存できる機能です。</p>
       <p>実装方式について: 外部のPDF生成ライブラリは使わず、お使いのブラウザ(Chrome/Edge/Safari等)が標準で持っている「印刷」機能を利用しています。ボタンを押すとレポート専用の画面に切り替わり、続けて印刷ダイアログが開くので、そこで出力先を「PDFに保存」に選ぶとPDFファイルとして保存できます(用紙に印刷したい場合はプリンタを選んでいただいても構いません)。グラフ自体は、このツール内でCanvasという仕組みを使ってその場で描画した画像です。</p>
       <p>グラフの配色(盾兵=青・槍兵=橙・弓兵=緑)は、色の見分けやすさ(色覚の個人差にも配慮したコントラスト基準)を確認したうえで選んでいます。</p>
+      <p>【v4.32で追加】「シミュレーション実行」を行った後に「実際の乱数で複数回試行」も実行しておくと、その勝率(勝利/敗北/未決着の割合)もレポートに追加で載るようになります(試行していない場合はこのセクションは表示されません)。入力値を変えて「シミュレーション実行」をやり直すと、直前の試行結果は自動的に無効化されるため、現在の設定とズレた勝率が載ることはありません。</p>
       <p><strong>裏取りについての注記</strong>: このレポートに載る数値自体は、画面に表示されているシミュレーション結果をそのまま転記したものであり、レポート化にあたって新たな計算や近似は行っていません。個々の数値の根拠(火晶スキルの効果量など未検証の値を含む)については、通常の結果画面にある各infoアイコンの説明をご参照ください。</p>`,
     },
   };
@@ -1654,7 +1653,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
         const statLabel = { dealt: '与ダメージ', taken: '被ダメージ', hp: 'HP' }[hero.equip.skill.stat];
         const magnitude = 15 * eqF;
         const signedPct = hero.equip.skill.stat === 'taken' ? -magnitude : magnitude;
-        lines.push(`[専用装備遠征スキル・${modeLabel}用] 味方全部隊の${statLabel} ${signedPct >= 0 ? '+' : ''}${signedPct.toFixed(1)}% ${active ? '(現在のモードで有効)' : '(現在のモードでは発動しません)'}`);
+        lines.push(`[専用装備スキル・${modeLabel}用] 味方全部隊の${statLabel} ${signedPct >= 0 ? '+' : ''}${signedPct.toFixed(1)}% ${active ? '(現在のモードで有効)' : '(現在のモードでは発動しません)'}`);
       }
     }
     return lines.join('<br>');
@@ -1884,11 +1883,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     document.getElementById('self-role-badge').textContent = roleText(sMode);
     document.getElementById('enemy-role-badge').textContent = roleText(eMode);
     document.getElementById('self-role-desc').textContent =
-      sMode === 'defense' ? '自軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備の遠征スキルは駐屯用のもののみ発動します。'
-                           : '自軍は集結(攻撃)で敵の拠点(砦・王城・ステーション・要塞など)を攻めます。専用装備の遠征スキルは集結用のもののみ発動します。';
+      sMode === 'defense' ? '自軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備スキルは駐屯用のもののみ発動します。'
+                           : '自軍は集結(攻撃)で敵の拠点(砦・王城・ステーション・要塞など)を攻めます。専用装備スキルは集結用のもののみ発動します。';
     document.getElementById('enemy-role-desc').textContent =
-      eMode === 'defense' ? '敵軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備の遠征スキルは駐屯用のもののみ発動します。'
-                           : '敵軍が集結(攻撃)で自軍の拠点(砦・王城・ステーション・要塞など)を攻めてきます。専用装備の遠征スキルは集結用のもののみ発動します。';
+      eMode === 'defense' ? '敵軍は拠点(砦・王城・ステーション・要塞など)で駐屯(防衛)します。専用装備スキルは駐屯用のもののみ発動します。'
+                           : '敵軍が集結(攻撃)で自軍の拠点(砦・王城・ステーション・要塞など)を攻めてきます。専用装備スキルは集結用のもののみ発動します。';
 
     // 【今回】「城壁・拠点補正 追加被ダメ軽減(%)」「駐屯 盾兵優先補充ボーナス(盾兵の実効HP+%)」は
     // 画面から非表示にしてほしいとのご要望を受け、駐屯(防衛)モードであってもこの2項目の入力欄自体は
@@ -1958,18 +1957,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
   // 表内では「ノラ(槍兵/S5)」のような兵種/シーズン注記を省き「ノラ」とだけ表示する(担当兵科は
   // 見出し・スロットから既に自明なため、幅の限られる列では簡潔さを優先する)。
   const shortHeroName = (name) => name.replace(/\([^)]*\)\s*$/, '');
-  const KIND_LABEL = { 才能スキル: '才能スキル', 専用装備遠征スキル: '専用装備遠征スキル', 敵デバフ: '敵デバフ', periodic: '周期発動スキル', proc: '確率発動スキル' };
-  // 1英雄が複数の異なるスキル(例: 才能スキル+専用装備遠征スキル)を持つ場合、それぞれ別項目として
+  const KIND_LABEL = { 遠征スキル: '遠征スキル', 専用装備スキル: '専用装備スキル', 敵デバフ: '敵デバフ', periodic: '周期発動スキル', proc: '確率発動スキル' };
+  // 1英雄が複数の異なるスキル(例: 遠征スキル+専用装備スキル)を持つ場合、それぞれ別項目として
   // 列挙する(「誰の」だけでなく「どのスキルが」発動しているかをユーザーが判別できるようにするため、v4.8)。
-  // skillNameが判明している場合は実際のスキル名も併記し、未確認の英雄はスキル種別のみを表示する(名称の捏造はしない)。
+  // skillNameが判明している場合は実際のスキル名も表示し、未確認の英雄はスキル種別のみを表示する(名称の捏造はしない)。
   // 各スキルを「英雄名[スキル種別:スキル名]」の1行に整形する(重複除去込み)。
   const fmtOneSkill = (s) => {
     const short = shortHeroName(s.heroName);
     const kindLabel = KIND_LABEL[s.kind] || s.kind;
-    // 和名(skillNameJa)が判明していればそちらを優先表示し、英語名(skillName)は括弧書きで併記する。
-    // 和名が未確認の場合は英語名のみ表示する(名称の捏造はしない)。
+    // 【v4.31】「スキル名の横の英語表記は不要」とのご指摘を受け、以前は和名(skillNameJa)が判明して
+    // いる場合に英語名(skillName)を括弧書きで併記していたが、これを廃止し和名(判明していれば)のみを
+    // 表示するようにした。和名が未確認の場合は、名称を捏造しないという方針を維持しつつ、代わりに
+    // 英語名をそのまま表示する(和名・英語名のいずれも不明な場合のみ無表示)。
     const displayName = s.skillNameJa || s.skillName;
-    const nameSuffix = displayName ? `:${displayName}${(s.skillNameJa && s.skillName) ? `(${s.skillName})` : ''}` : '';
+    const nameSuffix = displayName ? `:${displayName}` : '';
     let activeSuffix = '';
     if (s.kind === 'periodic') activeSuffix = '・発動中';
     else if (s.kind === 'proc') activeSuffix = `・発動(確率${Math.round((s.chance || 0) * 100)}%、乱数例)`;
@@ -2044,13 +2045,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     card.appendChild(el('p', { text: '損耗数(死亡/負傷の内訳は非計算)', style: 'font-weight:600;margin:10px 0 2px 0;' }));
     card.appendChild(lossTable);
 
-    // 【v4.11】常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)は、ターンが変わっても
+    // 【v4.11】常時発動しているスキル(遠征スキル/専用装備スキル/敵デバフ)は、ターンが変わっても
     // 内容が変わらないため、以前のようにターン毎の内訳表の全行に繰り返し表示すると非常に読みづらかった
     // (「見づらい」というご指摘の主因)。ここで1回だけ表示し、ターン毎の内訳表は実際にターンごとに
     // 変動する要素(周期発動スキル・確率発動スキル)だけに絞る。
     const constWrap = el('div', { style: 'margin-top:10px;' });
     constWrap.appendChild(el('p', { style: 'font-weight:600;margin:0 0 4px 0;' }, [
-      document.createTextNode('常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)'),
+      document.createTextNode('常時発動しているスキル(遠征スキル/専用装備スキル/敵デバフ)'),
       el('button', { type: 'button', class: 'info-icon', 'data-info': 'constant-skills', title: 'この欄について' }, [document.createTextNode('i')]),
     ]));
     const constBox = el('div', { style: 'font-size:12.5px;line-height:1.5;display:flex;gap:24px;flex-wrap:wrap;' });
@@ -2099,7 +2100,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
 
     // --- (2) 「発動しうる全スキル」のタイムライン表(1行=1スキル、1列=1ターン) ---
     // 【v4.13】「遠征スキルがターン毎にどんな感じで発動するか見たい」というご指摘に対応し、
-    // v4.12では周期/確率発動スキルのみだったこのタイムラインに、才能スキル・専用装備遠征スキル・
+    // v4.12では周期/確率発動スキルのみだったこのタイムラインに、遠征スキル・専用装備スキル・
     // 敵デバフ(=「常時発動しているスキル」欄と同じ内容)も行として統合した。これらは戦闘中ずっと
     // 同じ条件で発動し続けるため、全ターンのセルが緑色で埋まった行として表示され、「その英雄の
     // その遠征スキルは全ターンにわたって発動し続けている」ことが一目でわかる(周期発動=青、
@@ -2121,13 +2122,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       (enemyActive || []).forEach(s => collectRow('敵軍', s, h.turn));
     });
     const turnNumbers = (res.history || []).map(h => h.turn);
-    // 常時発動スキル(才能スキル/専用装備遠征スキル/敵デバフ)を、全ターンにわたって発動中の行として追加する。
-    const CONST_KINDS = new Set(['才能スキル', '専用装備遠征スキル', '敵デバフ']);
+    // 常時発動スキル(遠征スキル/専用装備スキル/敵デバフ)を、全ターンにわたって発動中の行として追加する。
+    const CONST_KINDS = new Set(['遠征スキル', '専用装備スキル', '敵デバフ']);
     dedupeSkillList(selfConstList).forEach(s => turnNumbers.forEach(t => collectRow('自軍', s, t)));
     dedupeSkillList(enemyConstList).forEach(s => turnNumbers.forEach(t => collectRow('敵軍', s, t)));
     // 常時発動スキル(緑)→周期発動スキル(青)→確率発動スキル(オレンジ)の順に並べ、種類ごとに
     // まとまって表示されるようにする(自軍を先に、敵軍を後に)。
-    const kindOrder = { '才能スキル': 0, '専用装備遠征スキル': 1, '敵デバフ': 2, periodic: 3, proc: 4 };
+    const kindOrder = { '遠征スキル': 0, '専用装備スキル': 1, '敵デバフ': 2, periodic: 3, proc: 4 };
     const sortedRows = Array.from(rowsMap.values()).sort((a, b) => {
       if (a.sideLabel !== b.sideLabel) return a.sideLabel === '自軍' ? -1 : 1;
       const ao = kindOrder[a.kind] != null ? kindOrder[a.kind] : 9;
@@ -2139,6 +2140,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       details.appendChild(el('p', { style: 'font-weight:600;margin:12px 0 2px 0;font-size:12.5px;' }, [
         document.createTextNode('スキル発動タイムライン(色つきセル=そのターンに発動中)'),
         el('button', { type: 'button', class: 'info-icon', 'data-info': 'timeline-legend', title: '見方について', text: 'i' }),
+        // 【v4.30】「横にスクロールしない」というご指摘への対応。表自体はCSS上スクロール可能だったが、
+        // マウスホイールでの直感的な横スクロールができず(スクロールバーを直接ドラッグする必要があった)、
+        // わかりにくかったための追記。実際のスクロール方法自体はsetupTimelineWheelScroll()側で
+        // マウスホイール操作を横スクロールに変換することで対応済み。
+        el('span', { text: '(マウスホイールで横スクロールできます)', style: 'font-weight:400;color:var(--muted);margin-left:6px;' }),
       ]));
       const tlWrap = el('div', { class: 'mini-table timeline-table' });
       const tlTable = el('table');
@@ -2149,15 +2155,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       tlTable.appendChild(thead);
       const tlBody = el('tbody');
       const cellColorFor = (kind) => {
-        if (CONST_KINDS.has(kind)) return '#10b981'; // 緑: 常時発動(才能/専用装備遠征/敵デバフ)
+        if (CONST_KINDS.has(kind)) return '#10b981'; // 緑: 常時発動(遠征スキル/専用装備スキル/敵デバフ)
         if (kind === 'periodic') return '#38bdf8'; // 水色: 周期発動
         return '#fb923c'; // オレンジ: 確率発動
       };
       sortedRows.forEach(row => {
         const tr = el('tr');
         const kindLabel = KIND_LABEL[row.kind] || row.kind;
+        // 【v4.31】fmtOneSkill同様、英語名の括弧併記を廃止(和名判明分は和名のみ、未確認分は英語名のみ表示)。
         const displayName = row.skillNameJa || row.skillName;
-        const nameSuffix = displayName ? `:${displayName}${(row.skillNameJa && row.skillName) ? `(${row.skillName})` : ''}` : '';
+        const nameSuffix = displayName ? `:${displayName}` : '';
         const chanceSuffix = row.kind === 'proc' ? `(確率${Math.round((row.chance || 0) * 100)}%)` : '';
         const label = `[${row.sideLabel}] ${shortHeroName(row.heroName)}[${kindLabel}${nameSuffix}]${chanceSuffix}`;
         tr.appendChild(el('td', { text: label, style: 'text-align:left;white-space:nowrap;' }));
@@ -2184,10 +2191,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     const logDiv = el('div', { class: 'hero-log' });
     const fmtLogLine = (side, l) => {
       const roleLabel = l.role ? `/${TYPE_LABEL[l.role]}担当` : '';
-      // ここは数値の裏取り根拠を確認する詳細欄のため、和名(判明分)に加え英語名も併記して
-      // 出典(wostools.net等)との突き合わせができるようにする。
+      // 【v4.31】以前はこの欄(裏取り根拠を確認する詳細欄)だけは、出典(wostools.net等)との
+      // 突き合わせをしやすくするため和名に加え英語名も併記していたが、「スキル名の横の英語表記は
+      // 不要」というご指摘を受け、他の箇所と統一して和名(判明分)のみを表示するようにした
+      // (和名が未確認の場合は代わりに英語名を表示。英語名で出典と突き合わせたい場合は、
+      // heroes-data.js内のコメントに調査時の英語名・出典を引き続き記載している)。
       const skillLabel = l.skillNameJa
-        ? `[${l.skillNameJa}${l.skillName ? `/${l.skillName}` : ''}]`
+        ? `[${l.skillNameJa}]`
         : (l.skillName ? `[${l.skillName}]` : '');
       return `[${side}${roleLabel}] ${l.heroName}${skillLabel} - ${l.kind}: ${l.scope === 'all' ? '全部隊' : TYPE_LABEL[l.scope]}の${l.stat} ${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}%`;
     };
@@ -2207,18 +2217,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
   }
 
   // 実際のゲーム内ログには「ターン数」という概念が存在しない(発動回数・キル数・生存数などのみ)ため、
-  // これは本ツール内部の計算用の刻み幅を決めるための固定基準値。「最大ターン数」を十分に確保している限り、
-  // この値を変えても勝敗・残存兵力・必要兵力倍率などの結果には影響しない(ターン別推移の刻み方のみ変わる)。
+  // これは本ツール内部の計算用の刻み幅を決めるための固定基準値。この値を変えても勝敗・残存兵力・
+  // 必要兵力倍率などの結果には影響しない(ターン別推移の刻み方のみ変わる)。
   const CALIBRATION_TARGET_TURNS = 60;
+  // v4.32でユーザー向けの「シミュレーション最大ターン数(安全装置)」入力欄を廃止し、どちらかの兵科が
+  // 全滅するまで(=決着がつくまで)自動的にシミュレーションを続ける仕様に変更した。ただし、極端な入力値
+  // (両軍が完全に拮抗し続ける等)でブラウザが無応答になることを避けるための内部専用の安全上限として、
+  // 十分に大きな値を残している(通常の対戦ではまず到達しない値)。
+  const INTERNAL_SAFETY_MAX_TURNS = 200000;
 
   function buildOpts() {
     const mech = readMech();
     const targetTurns = CALIBRATION_TARGET_TURNS;
-    const maxTurns = getNum('max-turns', 20000);
+    const maxTurns = INTERNAL_SAFETY_MAX_TURNS;
     // キャリブレーションは敵軍側のTier/火晶を基準点として使う(役割に関わらず一貫した基準にするため)。
     // v4.7で兵科ごとに個別のTier/火晶入力になったため、3兵科の平均値を基準点として用いる
-    // (この基準値は内部の倍率換算にのみ使われ、最大ターン数を十分に確保していれば勝敗・残存兵力・
-    // 必要兵力倍率などの結果自体には影響しない)。
+    // (この基準値は内部の倍率換算にのみ使われ、勝敗・残存兵力・必要兵力倍率などの結果自体には
+    // 影響しない)。
     const defLv = {}, defFc = {};
     ORDER.forEach(t => { defLv[t] = getNum(`defender-lv-${t}`, 10); defFc[t] = getNum(`defender-fc-${t}`, 7); });
     const avgLv = (defLv.shield + defLv.spear + defLv.archer) / 3;
@@ -2251,7 +2266,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     const losePct = (mc.winRate.defender * 100).toFixed(1);
     const undecidedPct = (mc.winRate.undecidedOrDraw * 100).toFixed(1);
     box.appendChild(el('div', {
-      text: `攻撃側勝利: ${winPct}% / 防衛側勝利: ${losePct}%${mc.winRate.undecidedOrDraw > 0 ? ` / 未決着(最大ターン数到達): ${undecidedPct}%` : ''}`,
+      text: `攻撃側勝利: ${winPct}% / 防衛側勝利: ${losePct}%${mc.winRate.undecidedOrDraw > 0 ? ` / 未決着: ${undecidedPct}%` : ''}`,
       style: 'font-size:13px;margin-bottom:6px;'
     }));
     const table = el('table', { class: 'stat-table' });
@@ -2302,17 +2317,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
         attackerLossStats: mc.defenderLossStats,
         defenderLossStats: mc.attackerLossStats,
       };
-      resultBox.appendChild(renderMonteCarloBlock(showB ? 'パターンA' : '', adaptForSelf(mcA)));
+      const mcAForSelf = adaptForSelf(mcA);
+      resultBox.appendChild(renderMonteCarloBlock(showB ? 'パターンA' : '', mcAForSelf));
+      let mcBForSelf = null;
       if (showB) {
         const mcB = selfIsAttacker
           ? SimCore.runBattleMonteCarlo(configB, enemyConfig, HEROES, opts, trials, baseSeed + '_B')
           : SimCore.runBattleMonteCarlo(enemyConfig, configB, HEROES, opts, trials, baseSeed + '_B');
-        resultBox.appendChild(renderMonteCarloBlock('パターンB', adaptForSelf(mcB)));
+        mcBForSelf = adaptForSelf(mcB);
+        resultBox.appendChild(renderMonteCarloBlock('パターンB', mcBForSelf));
       }
+      // 【v4.32】PDFレポートの勝率セクション用に、直近の複数回試行結果を保持しておく。
+      lastMonteCarloData = { showB, mcA: mcAForSelf, mcB: mcBForSelf };
     }, 10);
   }
 
   function runAndRender(withMultiplier) {
+    lastMonteCarloData = null; // 入力値が変わっている可能性があるため、直近の複数回試行結果は破棄する
     const opts = buildOpts();
     // 【v4.15】「シミュレーション結果もつど(実行するたびに)ばらつくはずだろ」というご指摘に対応。
     // v4.14まではtrialSeedを既定値0に固定しており、この「シミュレーション実行」ボタン自体は
@@ -2378,6 +2399,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
   // (盾兵=blue #2a78d6 / 槍兵=orange #eb6834 / 弓兵=aqua #1baf7a。ライト背景[印刷用紙を想定]での
   // カラーユニバーサルデザイン[CVD]適性・コントラストをvalidate_palette.jsで確認済み)。
   let lastRunData = null;
+  // 【v4.32】「実際の乱数で複数回試行」の直近の結果(PDFレポートの勝率セクション用)。
+  // 通常の「シミュレーション実行」を行うと、入力値が変わった可能性があるため一旦nullに戻す
+  // (試行結果が現在の設定とズレたままレポートに載ってしまうのを防ぐため)。
+  let lastMonteCarloData = null;
 
   const CHART_COLOR = { shield: '#2a78d6', spear: '#eb6834', archer: '#1baf7a' };
   const CHART_GRID = '#e3e2dd';
@@ -2520,6 +2545,49 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(padL + plotW, padT + plotH); ctx.stroke();
     return chart;
   }
+  // 勝率(実際の乱数による複数回試行)を示す棒グラフ。PDFレポートに勝率を載せてほしいというご要望
+  // (v4.32)への対応。「実際の乱数で複数回試行」ボタンの結果(lastMonteCarloData)がある場合のみ、
+  // レポートの各パターンの結果セクションに追加で表示する。
+  function drawWinRateChart(mc) {
+    const w = 420, h = 220;
+    const chart = makeChartCanvas(w, h);
+    const ctx = chart.ctx;
+    const padL = 44, padR = 16, padT = 14, padB = 30;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const niceMax = 100;
+    const yTicks = 4;
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= yTicks; i++) {
+      const val = niceMax * i / yTicks;
+      const y = padT + plotH - (val / niceMax) * plotH;
+      ctx.strokeStyle = CHART_GRID;
+      ctx.beginPath(); ctx.moveTo(padL, y + 0.5); ctx.lineTo(padL + plotW, y + 0.5); ctx.stroke();
+      ctx.fillStyle = CHART_TEXT_MUTED; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${val}%`, padL - 8, y);
+    }
+    const cats = [
+      { label: '勝利', val: mc.winRate.attacker * 100, color: STATUS_GOOD },
+      { label: '敗北', val: mc.winRate.defender * 100, color: STATUS_CRIT },
+    ];
+    if (mc.winRate.undecidedOrDraw > 0) cats.push({ label: '未決着', val: mc.winRate.undecidedOrDraw * 100, color: '#9a9890' });
+    const groupW = plotW / cats.length;
+    const barW = Math.min(60, groupW * 0.5);
+    cats.forEach((c, i) => {
+      const x = padL + groupW * i + (groupW - barW) / 2;
+      const barH = (c.val / niceMax) * plotH;
+      const y = padT + plotH - barH;
+      ctx.fillStyle = c.color;
+      drawRoundTopRect(ctx, x, y, barW, barH, 3);
+      ctx.fillStyle = CHART_TEXT_DARK; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(`${c.val.toFixed(1)}%`, x + barW / 2, y - 3);
+      ctx.font = '12px sans-serif'; ctx.textBaseline = 'top';
+      ctx.fillText(c.label, padL + groupW * i + groupW / 2, padT + plotH + 8);
+    });
+    ctx.strokeStyle = CHART_AXIS;
+    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(padL + plotW, padT + plotH); ctx.stroke();
+    return chart;
+  }
   function legendRow(items) {
     const wrap = el('div', { class: 'legend' });
     items.forEach(it => {
@@ -2559,8 +2627,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     table.appendChild(tbody);
     return table;
   }
-  // 1パターン(A or B)分のレポートセクションを組み立てる
-  function buildPatternReportSection(patternLabel, res, selfIsAttacker, cfg, enemyConfig) {
+  // 1パターン(A or B)分のレポートセクションを組み立てる。mcは「実際の乱数で複数回試行」の結果
+  // (省略可。直近に試行していれば渡され、勝率セクションが追加される)。
+  function buildPatternReportSection(patternLabel, res, selfIsAttacker, cfg, enemyConfig, mc) {
     const selfKey = selfIsAttacker ? 'attacker' : 'defender';
     const enemyKey = selfIsAttacker ? 'defender' : 'attacker';
     const sec = el('div', { style: 'margin-bottom:26px;' });
@@ -2573,6 +2642,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       document.createTextNode(`結果: ${w.text}`),
     ]);
     sec.appendChild(badge);
+
+    if (mc) {
+      const winPct = (mc.winRate.attacker * 100).toFixed(1);
+      const losePct = (mc.winRate.defender * 100).toFixed(1);
+      sec.appendChild(el('h3', { text: `勝率(実際の乱数による${mc.trials}回試行)` }));
+      sec.appendChild(el('p', {
+        text: `勝利: ${winPct}% / 敗北: ${losePct}%${mc.winRate.undecidedOrDraw > 0 ? ` / 未決着: ${(mc.winRate.undecidedOrDraw * 100).toFixed(1)}%` : ''}(自軍から見た表記)`,
+        style: 'font-size:12.5px;margin:0 0 6px 0;',
+      }));
+      sec.appendChild(chartToImg(drawWinRateChart(mc), '勝率グラフ'));
+    }
 
     sec.appendChild(el('h3', { text: '対戦条件' }));
     sec.appendChild(buildConfigSummaryTable('自軍', '敵軍', cfg, enemyConfig));
@@ -2618,8 +2698,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       ]), 'ターン別累積損耗グラフ'));
     }
 
-    // 常時発動しているスキル(才能/専用装備遠征/敵デバフ)
-    sec.appendChild(el('h3', { text: '常時発動しているスキル(才能スキル/専用装備遠征スキル/敵デバフ)' }));
+    // 常時発動しているスキル(遠征スキル/専用装備スキル/敵デバフ)
+    sec.appendChild(el('h3', { text: '常時発動しているスキル(遠征スキル/専用装備スキル/敵デバフ)' }));
     const selfConstList = (res.sideConstants && res.sideConstants[selfKey]) || [];
     const enemyConstList = (res.sideConstants && res.sideConstants[enemyKey]) || [];
     const constWrap = el('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;font-size:12.5px;' });
@@ -2637,9 +2717,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     container.appendChild(el('p', { class: 'meta', text: `出力日時: ${dateStr}` }));
 
     const d = lastRunData;
-    container.appendChild(buildPatternReportSection(d.showB ? 'パターンA' : '', d.resA, d.selfIsAttacker, d.configA, d.enemyConfig));
+    // 【v4.32】「実際の乱数で複数回試行」を直近に行っていれば(かつパターンB表示状況が一致していれば)、
+    // その勝率をレポートにも含める。入力を変えて「シミュレーション実行」をやり直すとlastMonteCarloDataは
+    // nullに戻るため、現在の結果とズレた勝率が載ることはない。
+    const mc = lastMonteCarloData;
+    const mcMatches = mc && mc.showB === d.showB;
+    container.appendChild(buildPatternReportSection(d.showB ? 'パターンA' : '', d.resA, d.selfIsAttacker, d.configA, d.enemyConfig, mcMatches ? mc.mcA : null));
     if (d.showB) {
-      container.appendChild(buildPatternReportSection('パターンB', d.resB, d.selfIsAttacker, d.configB, d.enemyConfig));
+      container.appendChild(buildPatternReportSection('パターンB', d.resB, d.selfIsAttacker, d.configB, d.enemyConfig, mcMatches ? mc.mcB : null));
     }
 
     container.appendChild(el('p', { class: 'footnote', text: '本レポートは「遠征戦闘シミュレーター」上で入力した設定値・計算モデルに基づく試算であり、実際の戦闘結果を保証するものではありません。兵科基礎ステータス等の裏取り状況については、ツール本体の各infoアイコンの説明をご参照ください。' }));
@@ -2647,15 +2732,45 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
   function setupPdfReport() {
     const btn = document.getElementById('btn-pdf-report');
     if (!btn) return;
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       if (!lastRunData) {
         alert('先に「シミュレーション実行」を行ってから、PDFレポートを出力してください。');
         return;
       }
       const container = document.getElementById('pdf-report');
       buildPdfReportContent(container);
+      // 【v4.32】グラフ(canvas.toDataURL()で生成した<img>)の描画(デコード)完了を待ってから
+      // 印刷を開始する。直後にwindow.print()を呼ぶと、環境によってはブラウザ側の画像デコードが
+      // 完了する前に印刷内容が確定してしまい、グラフ部分が空白のまま出力されることがあるための対策。
+      const imgs = Array.from(container.querySelectorAll('img.chart-img'));
+      await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(() => {}) : Promise.resolve())));
+      // 画像デコード後、描画フレームが実際に反映されるまでもう一呼吸待つ
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       window.print();
     });
+  }
+
+  // ---------------- スキル発動タイムラインの横スクロール対応(v4.30) ----------------
+  // 「スキル発動のタイムラインが横にスクロールしない」というご指摘への対応。タイムライン表
+  // (.timeline-table、1行=1スキル・1列=1ターン)自体はCSS上(.mini-table { overflow:auto; })
+  // 横スクロール可能な実装になっていたが、一般的なマウスホイール操作(縦方向のホイール)では
+  // 横方向にスクロールされず、実際にスクロールするには専用のスクロールバーを直接ドラッグするか
+  // Shift+ホイールを使う必要があった。これは多くの利用者にとって分かりにくく、事実上「スクロール
+  // できない」ように見える原因だった。
+  // ここでは、マウスホイールの縦方向の操作(deltaY)を、この表の横スクロール(scrollLeft)に
+  // 変換することで、直感的にマウスホイールだけで全ターン分を見られるようにした。対象を
+  // .timeline-table(1行=1スキルの表。行数が少なく縦スクロールの必要性は低い)に限定しており、
+  // ターン別の損耗数だけを表示する通常の.mini-table(1行=1ターンで縦に伸びる表)は対象にしていない
+  // (そちらは従来通り縦スクロールを優先する)。
+  function setupTimelineWheelScroll() {
+    document.addEventListener('wheel', (e) => {
+      const tl = e.target.closest('.timeline-table');
+      if (!tl) return;
+      if (tl.scrollWidth <= tl.clientWidth) return; // 横に伸びていない(スクロールの必要がない)場合は何もしない
+      if (e.deltaY === 0) return;
+      tl.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
   }
 
   // ---------------- 保存/読込 ----------------
@@ -2669,7 +2784,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
         // 読み込み時には使用しない(下記applyFullState参照)。
         scalingExponent: 0.5,
       },
-      maxTurns: getNum('max-turns', 20000),
+      // v4.32でmax-turns入力欄自体を廃止したが、旧バージョンで保存したJSONとの互換目的で
+      // フィールド自体は残す(読み込み時には使用しない。下記applyFullState参照)。
+      maxTurns: INTERNAL_SAFETY_MAX_TURNS,
       defender: readSideConfig('defender'),
       A: readSideConfig('A'),
       B: readSideConfig('B'),
@@ -2706,7 +2823,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
       // v4.16: scalingExponent入力欄は廃止済み(常に平方根モデル固定)のため、旧JSONに値が入っていても
       // 無視する(readMechが常に0.5を使う)。
     }
-    if (state.maxTurns != null) document.getElementById('max-turns').value = state.maxTurns;
+    // v4.32でmax-turns入力欄自体を廃止したため、旧JSONにこの値が入っていても読み込み時には使用しない
+    // (どちらかの兵科が全滅するまで自動的にシミュレーションを続ける仕様に統一)。
     if (state.defender) applySideConfig('defender', state.defender);
     if (state.A) applySideConfig('A', state.A);
     if (state.B) applySideConfig('B', state.B);
@@ -2754,6 +2872,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SimCoreExp
     document.getElementById('btn-find-mult').addEventListener('click', () => runAndRender(true));
     document.getElementById('btn-monte-carlo').addEventListener('click', runMonteCarlo);
     setupPdfReport();
+    setupTimelineWheelScroll();
   }
 
   document.addEventListener('DOMContentLoaded', init);
